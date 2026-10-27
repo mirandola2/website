@@ -1,4 +1,4 @@
-import { getQuotes } from '@/lib/content'
+import { quotes as allQuotes, type Quote as QuoteEntry } from '@/content/quotes'
 import RandomQuote from './RandomQuote'
 
 interface QuoteProps {
@@ -8,7 +8,7 @@ interface QuoteProps {
 }
 
 export default function Quote({ type, quote, className = '' }: QuoteProps) {
-  const quotes = quote ? [{ text: quote, type: type || '' }] : getQuotes().filter(q => q.type === type)
+  const quotes: QuoteEntry[] = quote ? [{ text: quote, type: type || '' }] : allQuotes.filter(q => q.type === type)
   if (quotes.length === 0) return null
 
   return (

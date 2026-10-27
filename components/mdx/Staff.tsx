@@ -1,4 +1,4 @@
-import { getStaff, type StaffMember } from '@/lib/content'
+import { getStaffMembers, type StaffMember } from '@/lib/data'
 import StaffGrid, { type StaffPerson } from './StaffGrid'
 
 interface StaffProps {
@@ -25,21 +25,21 @@ function displayName(person: StaffMember, staff: string, coca: boolean) {
 
 const orderKey = (p: StaffMember) => (typeof p.order === 'number' ? p.order : Infinity)
 
-export default function Staff({ staff, coca = false, selector = false }: StaffProps) {
+export default async function Staff({ staff, coca = false, selector = false }: StaffProps) {
   // Computed on the server: only what is displayed reaches the page (real names never end up in
   // the L/C pages' HTML or data).
-  const people: StaffPerson[] = getStaff()
-    .filter(p => (selector || staff === '*' || p.staff?.split('|').includes(staff)) && (!coca || p.coca === 1))
-    // Coca page: capi with an explicit `order` come first (ascending), the others keep the CSV row order
-    // (Array.sort is stable). Other pages: CSV row order.
+  const people: StaffPerson[] = (await getStaffMembers())
+    .filter(p => (selector || staff === '*' || p.staff?.split('|').includes(staff)) && (!coca || p.coca))
+    // Coca page: capi with an explicit `order` come first (ascending), the others keep the row order
+    // (Array.sort is stable). Other pages: row order.
     .sort((a, b) => (coca ? orderKey(a) - orderKey(b) : 0))
     .map(p => ({
       name: displayName(p, staff, coca),
       // With the "nome di caccia" the role is not shown
       ruolo: usesHuntName(p, staff, coca) ? '' : p.ruolo,
       staff: p.staff,
-      desc: p.desc,
-      img: p.img,
+      desc: p.desc ?? undefined,
+      img: p.img ?? undefined,
     }))
 
   return <StaffGrid people={people} initialStaff={staff} showBadges={coca} showDesc={!coca} selector={selector} />

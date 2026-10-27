@@ -4,7 +4,7 @@
 
 Il frontend è la parte di un sito web che è visibile dall'utente. Nel nostro caso è stata costruita usando Next.js e Tailwind. Quest'ultimo è un framework CSS utilizzato insieme alla libreria Daisy UI per semplificare la parte di design del sito. Next.js è invece un framework JavaScript (in questo progetto scritto in TypeScript) che permette di costruire siti, anche statici, utilizzando **React**. Le icone del sito vengono dalla libreria [Phosphor Icons](https://phosphoricons.com/).
 
-I siti statici, come quello generato da Next.js con l'opzione `output: 'export'`, sono siti web precompilati in pagine HTML, CSS e JavaScript che non richiedono un server attivo per generare i contenuti al momento della richiesta dell’utente. A differenza dei siti tradizionali dinamici, che generano le pagine in tempo reale, i siti statici vengono generati in anticipo, permettendo una distribuzione più semplice e una performance più elevata.
+Le pagine pubbliche sono statiche: vengono precompilate in pagine HTML, CSS e JavaScript al momento della build, senza bisogno di generare i contenuti a ogni richiesta dell’utente. A differenza dei siti tradizionali dinamici, che generano le pagine in tempo reale, questo permette una performance più elevata. I dati che cambiano (capi, totem, foto e video, compleanni) si trovano invece in un piccolo database (vedi [Database](#database-)): quando vengono modificati, Next.js rigenera solo le pagine interessate, senza bisogno di una nuova build.
 
 Fino ad ottobre 2026, il sito era fatto con Nuxt, un framework basato su Vue. 
 
@@ -26,7 +26,7 @@ In questa repository è presente e qui documentato il frontend, mentre il [Middl
          - [Altri componenti](#altri-componenti)
       + [Front Matter](#front-matter)
       + [Menu](#menu)
-   * [Staff file 👨‍👩‍👧‍👧](#staff-file-)
+   * [Database 🗄️](#database-)
    * [Immagini 🖼️](#immagini-)
    * [Analytics 📊](#analytics-)
    * [Hosting ☁️](#hosting-)
@@ -38,14 +38,21 @@ Per far partire il local server (su [http://localhost:3000](http://localhost:300
 
 ```sh
 npm install
+cp .env.example .env.local   # poi compilare i valori (vedi sotto)
+npm run db:migrate           # crea le tabelle in local.db
 npm run dev
 ```
 
-Per generare il sito statico (nella cartella `out/`, insieme alla sitemap):
+In locale il database è un semplice file SQLite, `local.db` (escluso da git: contiene dati personali). Per riempirlo vedi [Database](#database-).
+
+Per provare la build di produzione (pagine statiche, cache e revalidazione come online):
 
 ```sh
 npm run build
+npm start
 ```
+
+I test (per ora la logica dei compleanni) si lanciano con `npm test`.
 
 Pushando le modifiche su Github, il sito verrà automaticamente aggiornato.
 
@@ -164,7 +171,7 @@ Parametri:
 - `coca`: booleano, opzionale. Se vero, mostra solo i capi in CoCa, con nome e cognome.
 - `selector`: booleano, opzionale. Se vero, mostra dei pulsanti per passare da una staff all'altra.
 
-Il blocco mostra tutti i capi di una certa staff. I capi sono inseriti in formato .csv nel file `/content/_capi.csv` rispettando la formattazione presentata in [calce](#staff-file-).
+Il blocco mostra tutti i capi di una certa staff. I capi sono letti dalla tabella `staff_member` del database (vedi [Database](#database-)).
 
 
 #### Button Link
@@ -186,8 +193,8 @@ Testo del Bottone
 Componenti più specifici, usati ciascuno in una sola pagina e senza parametri (se non indicato):
 
 - `<GroupSize />`: mostra i numeri del gruppo (pagina _Il Gruppo_); i numeri sono scritti direttamente in `components/mdx/GroupSize.tsx`
-- `<LnkYearGrid />`: griglia per anno di foto e video, letti dal file `/content/_media.csv` (pagina _Foto e Video_)
-- `<CodiceSocio lastupdate="2022-23" />`: ricerca del codice socio (pagina _Ricerca Codice Socio_)
+- `<LnkYearGrid />`: griglia per anno di foto e video, letti dalla tabella `media` del database (pagina _Foto e Video_)
+- `<CodiceSocio lastupdate="2022-23" />`: ricerca del codice socio (pagina _Ricerca Codice Socio_). La ricerca avviene sul server (`app/actions/member.ts`) e funziona solo se il cookie `psk` contiene lo sha256 del "Token Magico", confrontato con `MEMBER_PSK_SHA256`
 - `<Morse />`: traduttore Morse
 - `<Alci />`: generatore di alci, con esportazione in PDF
 - `<MyDiv>`: semplice contenitore, utile per raggruppare contenuti
@@ -239,24 +246,46 @@ export const menuItems: MenuItem[] = [
 
 Nello stesso file, la lista `utilityItems` contiene gli strumenti (codice socio, Morse, alci, totem) mostrati nel menu rapido dell'header.
 
-## Staff file 👨‍👩‍👧‍👧
+## Database 🗄️
 
-I capi sono inseriti in formato .csv nel file `/content/_capi.csv` rispettando la formattazione presentata nell'esempio seguente.
+I dati che cambiano nel tempo sono in un database SQLite ospitato gratuitamente su [Turso](https://turso.tech) (in locale, il file `local.db`), letto con [Drizzle ORM](https://orm.drizzle.team). Lo schema è in `db/schema.ts`, le migrazioni in `db/migrations/`.
 
-```csv
-nome,nomeCaccia,ruolo,staff,coca,desc,img,order
-Baden Powell,Impeesa,Fondatore dello Scoutismo|Capo Reparto,CC|E,1,Impeesa ovvero l'animale che si sposta furtivamente di notte,bp.jpg,0
+| Tabella | Contenuto | Usata da |
+|---|---|---|
+| `totem` | nomi totem | pagina `/totem` |
+| `member` | codici socio, nomi e date di nascita (dati personali!) | `CodiceSocio`, `/api/birthdays` (solo nome e iniziale) |
+| `staff_member` | capi (`coca = 1`) e RS in servizio (`coca = 0`) | `<Staff />` |
+| `media` | link alle raccolte di foto e video | `<LnkYearGrid />` |
+
+Le letture delle pagine pubbliche sono in `lib/data.ts` e sono in cache: le pagine restano statiche e vengono rigenerate solo quando una modifica chiama `revalidateTag`.
+
+Comandi utili:
+
+```sh
+npm run db:generate                      # dopo aver modificato db/schema.ts: crea una nuova migrazione
+npm run db:migrate                       # applica le migrazioni al database di TURSO_DATABASE_URL
+npm run db:studio                        # interfaccia web per guardare e modificare i dati
+npm run db:import-d1 -- d1.sql           # importa totem e codici socio da un export del vecchio Worker
+npm run db:import-csv -- staff           # importa/aggiorna i capi da content/_capi.csv
+npm run db:import-csv -- media           # sostituisce i link foto/video con content/_media.csv
 ```
+
+L'export del vecchio database Cloudflare D1 si ottiene, dalla cartella del Worker, con `npx wrangler d1 export people --remote --output=d1.sql`.
+
+Note sui capi (`staff_member`):
 
 - Il nome mostrato dipende dalla pagina: nelle pagine con `coca` si vedono nome e cognome; nelle pagine L/C (`staff == {L, C}`) solo il `nomeCaccia`, ovvero il personaggio interpretato dai capi in LC (non il nome Totem), in modo da mantenere i capi anonimi ai bambini; nelle altre pagine solo il nome di battesimo.
 - Se nel campo `ruolo` è presente una `|`, il contenuto antecedente verrà mostrato quando `staff == *`, il contenuto successivo negli altri casi. 
 - Separare i doppi incarichi con un `|` nel campo `staff`. I valori possibili sono gli stessi riportati in precedenza.
 - Il campo `img` è il nome della foto del capo, che si deve trovare nella cartella `/img/staff` su ImageKit (se il percorso della foto è `/img/staff/capo.jpg`, il campo deve essere `capo.jpg`).
 - Il campo `order` è facoltativo. Se presente, sovrascrive l'ordine delle righe, andando a posizionare i capi secondo l'ordine crescente. Utile solo in caso di doppi servizi.
+- Solo i capi (`coca = 1`) possono avere un'email: il database rifiuta un'email su una riga RS.
+
+Le citazioni (`<Quote type="..." />`) non cambiano mai e sono in `content/quotes.ts`.
 
 ## Immagini 🖼️
 
-Gestire le immagini è complicato sia per una questione di privacy sia per una questione di storage. L'attuale soluzione prevede che tutte le immagini di archivio siano caricate esternamente, in particolare sul OneDrive fornito al gruppo dall'associazione (i link alle raccolte si trovano nel file `/content/_media.csv`); tranne per ciò che riguarda le poche immagini presenti sul sito come immagini di copertina o simili, che per una questione di latenza si è preferito procedere diversamente. Queste sono caricate sul sito [ImageKit.io](https://imagekit.io), un servizio di CDN che permette di ottimizzare le immagini e renderle più veloci da caricare. 
+Gestire le immagini è complicato sia per una questione di privacy sia per una questione di storage. L'attuale soluzione prevede che tutte le immagini di archivio siano caricate esternamente, in particolare sul OneDrive fornito al gruppo dall'associazione (i link alle raccolte si trovano nella tabella `media` del database); tranne per ciò che riguarda le poche immagini presenti sul sito come immagini di copertina o simili, che per una questione di latenza si è preferito procedere diversamente. Queste sono caricate sul sito [ImageKit.io](https://imagekit.io), un servizio di CDN che permette di ottimizzare le immagini e renderle più veloci da caricare. 
 
 Grazie al loader personalizzato di `next/image` (`lib/imagekit-loader.ts`) è sufficiente inserire il percorso *relativo* dell'immagine (es. `/img/misc/img.jpg`) e sarà ImageKit a ridimensionarla e ottimizzarla in base allo schermo. Se serve costruire a mano l'indirizzo di un'immagine, va usata la funzione `imagekitUrl` in `lib/imagekit.ts`.
 
@@ -265,4 +294,6 @@ Le statistiche del sito sono gestite da [Vercel Web Analytics](https://vercel.co
 
 ## Hosting ☁️
 
-Il sito viene esportato come sito statico nella cartella `out/` (comando `npm run build`) ed è ospitato gratuitamente su [Vercel](https://vercel.com). Il dominio è `mirandola2.it`.
+Il sito è ospitato gratuitamente su [Vercel](https://vercel.com) (piano Hobby) e il database su Turso (piano gratuito). Il dominio è `mirandola2.it`. Le pagine pubbliche sono statiche; girano come funzioni solo le API (`/api/...`) e la rigenerazione delle pagine dopo una modifica ai dati. Sitemap e `robots.txt` sono generati da `app/sitemap.ts` e `app/robots.ts`.
+
+Su Vercel vanno impostate le stesse variabili d'ambiente di `.env.example` (`TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `MEMBER_PSK_SHA256`).

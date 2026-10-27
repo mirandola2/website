@@ -1,6 +1,5 @@
 import fs from 'fs'
 import path from 'path'
-import Papa from 'papaparse'
 import { parse as parseYaml } from 'yaml'
 
 const contentDir = path.join(process.cwd(), 'content')
@@ -18,33 +17,7 @@ export interface PageDoc {
 
 export type BlogPost = PageDoc
 
-export interface StaffMember {
-  nome: string
-  nomeCaccia?: string
-  ruolo: string
-  staff: string
-  coca: number
-  desc?: string
-  img: string
-  order: number
-}
-
-// Columns of content/_media.csv
-export interface MediaEntry {
-  type: 'image' | 'video'
-  id: string
-  year?: number
-  name: string
-  url: string
-}
-
-export interface Quote {
-  text: string
-  type: string
-  author?: string
-}
-
-// The static export calls these helpers once per generated page (params, metadata and
+// The build calls these helpers once per generated page (params, metadata and
 // render), so cache the parsed content for the whole build. In dev, always re-read to
 // pick up edits without restarting the server.
 const shouldCache = process.env.NODE_ENV === 'production'
@@ -116,21 +89,6 @@ export const getAllBlogPosts = cached((): BlogPost[] => {
 export function getBlogPostBySlug(slug: string): BlogPost | null {
   return getAllBlogPosts().find(p => p.slug === slug) || null
 }
-
-function getCSVCollection<T>(filename: string): T[] {
-  const filePath = path.join(contentDir, filename)
-  if (!fs.existsSync(filePath)) return []
-  const parsed = Papa.parse<T>(fs.readFileSync(filePath, 'utf-8'), {
-    header: true,
-    skipEmptyLines: true,
-    dynamicTyping: true,
-  })
-  return parsed.data
-}
-
-export const getStaff = cached(() => getCSVCollection<StaffMember>('_capi.csv'))
-export const getMedia = cached(() => getCSVCollection<MediaEntry>('_media.csv'))
-export const getQuotes = cached(() => getCSVCollection<Quote>('_quotes.csv'))
 
 function walkDir(dir: string): string[] {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap(entry => {

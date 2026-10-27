@@ -3,6 +3,7 @@
 import { useState, useRef, useSyncExternalStore } from 'react'
 import { useCookie } from '@/hooks/useCookie'
 import { sha256Hex } from '@/lib/sha256'
+import { searchMemberCode as searchMemberCodeAction } from '@/app/actions/member'
 import { MagnifyingGlassIcon, SignOutIcon, FloppyDiskIcon } from '@phosphor-icons/react'
 
 interface CodiceSocioProps {
@@ -57,18 +58,10 @@ export default function CodiceSocio({ lastupdate }: CodiceSocioProps) {
     dialogRef.current?.showModal()
 
     try {
-      const res = await fetch(
-        `https://people.mirandola2.workers.dev/data?name=${encodeURIComponent(cleaned.toLowerCase())}`,
-        { headers: { 'Content-Type': 'application/json', 'Just-A-PSK': pskCookie.get() || '' } },
-      )
-
-      if (res.status === 403) {
-        setError('Non sei autorizzato o il token usato è errato. Esci e riprova.')
-      } else if (!res.ok) {
-        setError(`Errore del server (${res.status}), riprova più tardi.`)
-      } else {
-        setPersonData(await res.json())
-      }
+      const res = await searchMemberCodeAction(cleaned)
+      if (res.ok) setPersonData(res.people)
+      else if (res.error === 'unauthorized') setError('Non sei autorizzato o il token usato è errato. Esci e riprova.')
+      else setError('Nome non valido.')
     } catch {
       setError('Errore di rete')
     } finally {

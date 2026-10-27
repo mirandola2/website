@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { useCachedFetch } from '@/hooks/useCachedFetch'
 import { HandTapIcon } from '@phosphor-icons/react'
 import LoadingState from './LoadingState'
@@ -114,15 +114,7 @@ function BirthdayConfetti({ children }: { children: React.ReactNode }) {
 }
 
 export default function Birthdays() {
-  const url = useMemo(() => {
-    const now = new Date()
-    const start = new Date(now.getFullYear(), 0, 0)
-    const diff = now.getTime() - start.getTime() + (start.getTimezoneOffset() - now.getTimezoneOffset()) * 60 * 1000
-    const day = Math.floor(diff / (1000 * 60 * 60 * 24))
-    return `https://people.mirandola2.workers.dev/birthday?t=7&d=${day}`
-  }, [])
-
-  const { data, error } = useCachedFetch<BirthdayPerson[]>(url, 12 * 60 * 60 * 1000)
+  const { data, error } = useCachedFetch<BirthdayPerson[]>('/api/birthdays/', 60 * 60 * 1000)
 
   if (!data) return <LoadingState error={error} />
 

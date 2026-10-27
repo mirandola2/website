@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Hero from '@/components/Hero'
+import { getTotem } from '@/lib/data'
 import TotemTable from './TotemTable'
 
 export const metadata: Metadata = {
@@ -7,11 +8,13 @@ export const metadata: Metadata = {
   description: 'Archivio dei nomi totem delle guide e degli scout del Gruppo Scout Mirandola 2.',
 }
 
-export default function TotemPage() {
+export default async function TotemPage() {
+  const totem = await getTotem()
+
   return (
     <>
       <Hero title="Nomi Totem" image="/img/misc/fuoco.jpg" />
-      <TotemTable>
+      <TotemTable totem={totem}>
         <p className="my-8 text-justify">
           Il Totem è un nome, di solito di un animale (ma a volte anche di piante,
           alberi o agenti atmosferici), seguito da un aggettivo, che viene dato

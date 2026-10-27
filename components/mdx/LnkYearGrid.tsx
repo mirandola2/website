@@ -1,12 +1,12 @@
-import { getMedia } from '@/lib/content'
+import { getMedia } from '@/lib/data'
 import MediaYearGrid from './MediaYearGrid'
 
-export default function LnkYearGrid() {
-  const media = getMedia().map(item => ({
-    name: String(item.name ?? ''),
-    id: String(item.id ?? ''),
+export default async function LnkYearGrid() {
+  const media = (await getMedia()).map(item => ({
+    name: item.name,
+    id: item.slug,
     url: item.url,
-    year: item.year ?? 0,
+    year: item.year,
     type: item.type === 'image' ? 'photo' : 'video',
   }))
 

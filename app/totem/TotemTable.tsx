@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useMemo, useDeferredValue } from 'react'
+import { useState, useMemo, useDeferredValue } from 'react'
 
-interface TotemPerson {
+export interface TotemPerson {
   name: string
   totem: string
   location: string
@@ -16,26 +16,9 @@ interface TotemGroup {
   people: TotemPerson[]
 }
 
-type Status = 'loading' | 'loaded' | 'error'
-
-export default function TotemTable({ children }: { children: React.ReactNode }) {
-  const [totem, setTotem] = useState<TotemPerson[]>([])
-  const [status, setStatus] = useState<Status>('loading')
+export default function TotemTable({ totem, children }: { totem: TotemPerson[]; children: React.ReactNode }) {
   const [filter, setFilter] = useState('')
   const deferredFilter = useDeferredValue(filter)
-
-  useEffect(() => {
-    fetch('https://people.mirandola2.workers.dev/totem')
-      .then(res => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        return res.json()
-      })
-      .then((t: TotemPerson[]) => {
-        setTotem(t)
-        setStatus('loaded')
-      })
-      .catch(() => setStatus('error'))
-  }, [])
 
   const groups = useMemo(() => {
     const query = deferredFilter.trim().toLowerCase()
@@ -77,43 +60,29 @@ export default function TotemTable({ children }: { children: React.ReactNode }) 
       </div>
 
       <div className="md:w-1/2">
-        {status === 'loaded' ? (
-          groups.length > 0 ? (
-            // One table per group: a sticky row is only constrained by its table (not by its
-            // tbody), so with a single table the old headers would never scroll away.
-            <div>
-              {groups.map(group => (
-                <table key={group.key} className="table table-fixed h-fit">
-                  <tbody>
-                    <tr className="bg-neutral sticky top-16 xl:top-[71px] z-1 rounded-xl">
-                      <th className="rounded-l-xl w-1/2">{group.location}</th>
-                      <th className="rounded-r-xl">{group.year}</th>
+        {groups.length > 0 ? (
+          // One table per group: a sticky row is only constrained by its table (not by its
+          // tbody), so with a single table the old headers would never scroll away.
+          <div>
+            {groups.map(group => (
+              <table key={group.key} className="table table-fixed h-fit">
+                <tbody>
+                  <tr className="bg-neutral sticky top-16 xl:top-[71px] z-1 rounded-xl">
+                    <th className="rounded-l-xl w-1/2">{group.location}</th>
+                    <th className="rounded-r-xl">{group.year}</th>
+                  </tr>
+                  {group.people.map((person, i) => (
+                    <tr key={person.name + i} className="hover:bg-base-200">
+                      <td className="rounded-l-xl">{person.name}</td>
+                      <td className="rounded-r-xl">{person.totem}</td>
                     </tr>
-                    {group.people.map((person, i) => (
-                      <tr key={person.name + i} className="hover:bg-base-200">
-                        <td className="rounded-l-xl">{person.name}</td>
-                        <td className="rounded-r-xl">{person.totem}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              ))}
-            </div>
-          ) : (
-            <p className="my-8 text-center opacity-70">Nessun risultato per &ldquo;{filter}&rdquo;.</p>
-          )
-        ) : (
-          <div className="my-8 text-primary text-center">
-            {status === 'loading' ? (
-              <>
-                <span className="loading loading-spinner loading-lg" />
-                <br />
-                Il Grande Capo Manitù sta caricando i nomi totem, attendete!
-              </>
-            ) : (
-              'Un problema non ha permesso il caricamento dei dati, riprova più tardi.'
-            )}
+                  ))}
+                </tbody>
+              </table>
+            ))}
           </div>
+        ) : (
+          <p className="my-8 text-center opacity-70">Nessun risultato per &ldquo;{filter}&rdquo;.</p>
         )}
       </div>
     </div>
