@@ -1,4 +1,5 @@
 import { getStaffMembers, type StaffMember } from '@/lib/data'
+import { LC_STAFF } from '@/lib/staff'
 import StaffGrid, { type StaffPerson } from './StaffGrid'
 
 interface StaffProps {
@@ -6,8 +7,6 @@ interface StaffProps {
   coca?: boolean
   selector?: boolean
 }
-
-const LC_STAFF = ['L', 'C']
 
 // Names shown on the site:
 // - Coca page: name and surname
@@ -42,5 +41,5 @@ export default async function Staff({ staff, coca = false, selector = false }: S
       img: p.img ?? undefined,
     }))
 
-  return <StaffGrid people={people} initialStaff={staff} showBadges={coca} showDesc={!coca} selector={selector} />
+  return <StaffGrid people={people} initialStaff={staff} showBadges={coca} showDesc={!coca && LC_STAFF.includes(staff)} selector={selector} />
 }

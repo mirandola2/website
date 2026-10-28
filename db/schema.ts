@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm'
 import { check, index, integer, sqliteTable, text, unique } from 'drizzle-orm/sqlite-core'
+import type { ProjectSections } from '@/lib/project'
 
 // Column names are camelCase here and snake_case in SQL (`casing: 'snake_case'` in lib/db.ts
 // and drizzle.config.ts).
@@ -61,7 +62,8 @@ export const media = sqliteTable('media', {
   sortOrder: integer().notNull().default(0),
 })
 
-// A leader's yearly project: readable by every leader, editable only by its owner
+// A leader's yearly project: readable by every leader, editable only by its owner. The four
+// areas of the paper template are one JSON value (lib/project.ts; read it with normalizeSections).
 export const yearProject = sqliteTable(
   'year_project',
   {
@@ -71,14 +73,18 @@ export const yearProject = sqliteTable(
       .references(() => staffMember.id, { onDelete: 'cascade' }),
     // '2026-27'
     scoutYear: text().notNull(),
-    titolo: text().notNull().default(''),
-    obiettivi: text().notNull().default(''),
-    tappe: text().notNull().default(''),
-    verifica: text().notNull().default(''),
+    sections: text({ mode: 'json' }).$type<ProjectSections>().notNull().default(sql`'{}'`),
     updatedAt: integer({ mode: 'timestamp_ms' }).notNull(),
   },
   t => [unique().on(t.staffMemberId, t.scoutYear)],
 )
+
+// Per scout year settings: the variable question of the project template
+export const scoutYear = sqliteTable('scout_year', {
+  // '2026-27'
+  id: text().primaryKey(),
+  question: text().notNull(),
+})
 
 // Better Auth tables (core schema: user, session, account, verification)
 

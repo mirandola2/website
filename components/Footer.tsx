@@ -26,9 +26,6 @@ export default function Footer() {
                   <Link className="link link-hover" href="/contatti">
                     Contatti
                   </Link>
-                  <Link className="link link-hover" href="/tabu/" prefetch={false}>
-                    Tabù
-                  </Link>
                   <button
                     type="button"
                     className="link link-hover text-left"

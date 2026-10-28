@@ -6,33 +6,10 @@ import { staffMember } from '@/db/schema'
 import ActionForm from '@/components/tabu/ActionForm'
 import PhotoUploader from '@/components/tabu/PhotoUploader'
 import StaffAvatar from '@/components/tabu/StaffAvatar'
-import { Checkbox, Field, TextArea } from '@/components/tabu/Field'
+import StaffFields from '@/components/tabu/StaffFields'
 import { deleteStaffMember, saveStaffMember, uploadStaffPhotoAdmin } from '../actions'
 
 export const metadata: Metadata = { title: 'Admin · Staff' }
-
-type Row = typeof staffMember.$inferSelect
-
-function StaffFields({ row }: { row?: Row }) {
-  return (
-    <>
-      {row && <input type="hidden" name="id" value={row.id} />}
-      <div className="grid gap-x-4 md:grid-cols-2">
-        <Field label="Nome e cognome" name="nome" defaultValue={row?.nome} required />
-        <Field label="Nome di caccia (L/C)" name="nomeCaccia" defaultValue={row?.nomeCaccia} />
-        <Field label="Staff" name="staff" defaultValue={row?.staff} required hint="L, C, E, G, N, CF, CC, CJ; doppi servizi: E|CJ" />
-        <Field label="Ruolo" name="ruolo" defaultValue={row?.ruolo} hint="Uno per staff, con lo stesso ordine: Capo Reparto|Capo Gruppo" />
-        <Field label="Email di accesso" name="email" type="email" defaultValue={row?.email} hint="Solo capi in Co.Ca.: l'account Google con cui entra nel Tabù" />
-        <Field label="Ordine (pagina Co.Ca.)" name="order" type="number" defaultValue={row?.order} />
-      </div>
-      <TextArea label="Descrizione" name="desc" defaultValue={row?.desc} />
-      <div className="flex flex-wrap gap-4">
-        <Checkbox label="In Co.Ca. (capo)" name="coca" defaultChecked={row ? row.coca : true} />
-        <Checkbox label="Admin" name="isAdmin" defaultChecked={row?.isAdmin} />
-      </div>
-    </>
-  )
-}
 
 export default async function AdminStaffPage() {
   const admin = await requireAdmin()

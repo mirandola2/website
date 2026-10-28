@@ -1,7 +1,8 @@
 import 'server-only'
 import { and, asc, count, desc, eq, isNotNull, sql } from 'drizzle-orm'
 import { db } from './db'
-import { media, staffMember, totem, yearProject } from '@/db/schema'
+import { media, scoutYear as scoutYearTable, staffMember, totem, yearProject } from '@/db/schema'
+import { DEFAULT_QUESTION, normalizeSections } from './project'
 
 // Tabù reads: not cached (the Tabù is dynamic and only a few dozen leaders use it). Callers must
 // have checked requireLeader() first.
@@ -14,7 +15,18 @@ export async function getProject(staffMemberId: number, scoutYear: string) {
     .select()
     .from(yearProject)
     .where(and(eq(yearProject.staffMemberId, staffMemberId), eq(yearProject.scoutYear, scoutYear)))
-  return project ?? null
+  return project ? { ...project, sections: normalizeSections(project.sections) } : null
+}
+
+// The year's variable question of the template ("Che pozione userai?")
+export async function getYearQuestion(scoutYear: string) {
+  const [row] = await db.select().from(scoutYearTable).where(eq(scoutYearTable.id, scoutYear))
+  return row?.question ?? DEFAULT_QUESTION
+}
+
+export async function getYearQuestions() {
+  const rows = await db.select().from(scoutYearTable)
+  return Object.fromEntries(rows.map(r => [r.id, r.question]))
 }
 
 export async function getProjectYears() {
@@ -23,26 +35,24 @@ export async function getProjectYears() {
 }
 
 // Every leader with their project for the year (null when not written yet)
-export function getProjectsForYear(scoutYear: string) {
-  return db
+export async function getProjectsForYear(scoutYear: string) {
+  const rows = await db
     .select({
       leaderId: staffMember.id,
       nome: staffMember.nome,
       img: staffMember.img,
       staff: staffMember.staff,
-      ruolo: staffMember.ruolo,
-      project: {
-        titolo: yearProject.titolo,
-        obiettivi: yearProject.obiettivi,
-        tappe: yearProject.tappe,
-        verifica: yearProject.verifica,
-        updatedAt: yearProject.updatedAt,
-      },
+      sections: yearProject.sections,
+      updatedAt: yearProject.updatedAt,
     })
     .from(staffMember)
     .leftJoin(yearProject, and(eq(yearProject.staffMemberId, staffMember.id), eq(yearProject.scoutYear, scoutYear)))
     .where(loginLeaders)
     .orderBy(asc(staffMember.id))
+  return rows.map(({ sections, updatedAt, ...leader }) => ({
+    ...leader,
+    project: updatedAt ? { sections: normalizeSections(sections), updatedAt } : null,
+  }))
 }
 
 export async function getDashboardStats(scoutYear: string) {

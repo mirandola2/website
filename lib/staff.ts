@@ -33,3 +33,7 @@ export const staffPages: Record<string, { href: string; label: string }> = {
 }
 
 export const splitStaff = (staff: string) => staff.split('|').map(s => s.trim()).filter(Boolean)
+
+// Lupetti/Coccinelle: shown with their "nome di caccia" and a description on the unit pages
+export const LC_STAFF = ['L', 'C']
+export const isLcStaff = (staff: string) => splitStaff(staff).some(s => LC_STAFF.includes(s))

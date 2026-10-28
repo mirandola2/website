@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { GoogleLogoIcon } from '@phosphor-icons/react'
 import { authClient } from '@/lib/auth-client'
 
 export default function GoogleSignIn() {
@@ -26,7 +25,7 @@ export default function GoogleSignIn() {
   return (
     <>
       <button type="button" className="btn btn-primary btn-lg w-full" onClick={signIn} disabled={pending}>
-        {pending ? <span className="loading loading-spinner loading-sm" /> : <GoogleLogoIcon size={22} weight="bold" aria-hidden />}
+        {pending && <span className="loading loading-spinner loading-sm" />}
         Accedi con Google
       </button>
       {failed && <p className="text-error text-sm mt-2">Non è stato possibile contattare Google, riprova.</p>}

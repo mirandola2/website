@@ -7,7 +7,8 @@ import { db } from '@/lib/db'
 import { requireAdmin } from '@/lib/dal'
 import { deleteStaffPhoto } from '@/lib/imagekit-server'
 import { replaceStaffPhoto } from '@/lib/staff-photo'
-import { media, staffMember, totem } from '@/db/schema'
+import { media, scoutYear, staffMember, totem } from '@/db/schema'
+import { parseScoutYear } from '@/lib/scout-year'
 import type { ActionResult } from '@/components/tabu/types'
 
 // Every action re-checks the admin flag: the pages hiding the forms is not enough.
@@ -200,4 +201,22 @@ export async function deleteTotem(_prev: ActionResult, formData: FormData): Prom
   await requireAdmin()
   const [row] = await db.delete(totem).where(eq(totem.id, id.parse(formData.get('id')))).returning()
   return row ? done('totem', `Eliminato ${row.name}.`) : { ok: false, message: 'Riga non trovata.' }
+}
+
+// --- Scout years ---
+
+const YearSchema = z.object({
+  id: z.string().refine(v => parseScoutYear(v) !== null, 'Anno non valido.'),
+  question: requiredText(200, 'Domanda'),
+})
+
+// The variable question of the project template, one per scout year
+export async function saveYearQuestion(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  await requireAdmin()
+  const parsed = YearSchema.safeParse(Object.fromEntries(formData))
+  if (!parsed.success) return fail(parsed.error)
+  const { id, question } = parsed.data
+  await db.insert(scoutYear).values({ id, question }).onConflictDoUpdate({ target: scoutYear.id, set: { question } })
+  revalidatePath('/tabu', 'layout')
+  return { ok: true, message: 'Salvato.' }
 }

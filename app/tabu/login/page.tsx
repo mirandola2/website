@@ -23,7 +23,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           <LockKeyIcon size={32} weight="duotone" aria-hidden />
           Tabù
         </h1>
-        <p>Area riservata ai capi della Comunità Capi: progetti dell&apos;anno, profilo e strumenti.</p>
+        <p>Area riservata ai Capi della Comunità Capi</p>
         {error && (
           <div role="alert" className="alert alert-error alert-soft">
             {errors[error] ?? 'Accesso non riuscito, riprova.'}

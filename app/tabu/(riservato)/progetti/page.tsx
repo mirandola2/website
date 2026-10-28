@@ -1,30 +1,26 @@
 import type { Metadata } from 'next'
 import { requireLeader } from '@/lib/dal'
-import { getProjectsForYear, getProjectYears } from '@/lib/tabu'
+import { getProjectsForYear, getProjectYears, getYearQuestion } from '@/lib/tabu'
 import { parseScoutYear, scoutYearOf, scoutYearOptions } from '@/lib/scout-year'
-import { formatDate } from '@/lib/format'
+import { filledSentence, firstName, formatDate } from '@/lib/format'
+import { CHECKPOINTS, isSectionEmpty, PROJECT_SECTIONS } from '@/lib/project'
 import { splitStaff, staffColors, staffLabels } from '@/lib/staff'
 import StaffAvatar from '@/components/tabu/StaffAvatar'
+import ScoreBoxes from '@/components/tabu/ScoreBoxes'
 import YearPicker from '@/components/tabu/YearPicker'
 
 export const metadata: Metadata = { title: 'Progetti della Co.Ca.' }
-
-const sections = [
-  { key: 'obiettivi', label: 'Obiettivi' },
-  { key: 'tappe', label: 'Tappe' },
-  { key: 'verifica', label: 'Verifica' },
-] as const
 
 export default async function ProjectsPage({ searchParams }: { searchParams: Promise<{ anno?: string }> }) {
   await requireLeader()
   const { anno } = await searchParams
   const year = parseScoutYear(anno) !== null ? anno! : scoutYearOf()
-  const [rows, years] = await Promise.all([getProjectsForYear(year), getProjectYears()])
+  const [rows, years, question] = await Promise.all([getProjectsForYear(year), getProjectYears(), getYearQuestion(year)])
   // Written projects first (most recent first), then who hasn't written one yet
   const written = rows
-    .filter(r => r.project?.updatedAt)
-    .sort((a, b) => b.project!.updatedAt!.getTime() - a.project!.updatedAt!.getTime())
-  const missing = rows.filter(r => !r.project?.updatedAt)
+    .flatMap(r => (r.project ? [{ ...r, project: r.project }] : []))
+    .sort((a, b) => b.project.updatedAt.getTime() - a.project.updatedAt.getTime())
+  const missing = rows.filter(r => !r.project)
 
   return (
     <div className="space-y-6">
@@ -33,7 +29,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
         <YearPicker years={scoutYearOptions([...years, year])} current={year} basePath="/tabu/progetti/" />
       </div>
       <p className="opacity-70">
-        {written.length} capi su {rows.length} hanno compilato il progetto {year}.
+        {filledSentence(written.length, rows.length, year)}
       </p>
 
       {written.map(({ leaderId, nome, img, staff, project }) => (
@@ -42,27 +38,51 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
             <header className="flex items-center gap-4">
               <StaffAvatar img={img} name={nome} size={56} />
               <div className="space-y-1">
-                <h2 className="text-xl font-bold text-primary">{project!.titolo || nome}</h2>
+                <h2 className="text-xl font-bold text-primary">{firstName(nome)}</h2>
                 <div className="flex flex-wrap items-center gap-1 text-sm">
-                  <span>{nome}</span>
                   {splitStaff(staff).map(s => (
                     <span key={s} className={`badge badge-sm border-0 ${staffColors[s] || 'bg-base-300'}`}>
                       {staffLabels[s] || s}
                     </span>
                   ))}
-                  <span className="opacity-60">· {formatDate(project!.updatedAt!)}</span>
+                  <span className="opacity-60">· {formatDate(project.updatedAt)}</span>
                 </div>
               </div>
             </header>
-            {sections.map(
-              s =>
-                project![s.key] && (
-                  <section key={s.key}>
-                    <h3 className="font-bold">{s.label}</h3>
-                    <p className="whitespace-pre-line">{project![s.key]}</p>
+            <div className="grid gap-3 md:grid-cols-2">
+              {PROJECT_SECTIONS.map(({ key, title }) => {
+                const s = project.sections[key]
+                if (isSectionEmpty(s)) return null
+                return (
+                  <section key={key} className="rounded-box bg-base-100 p-4 space-y-2">
+                    <h3 className="font-bold text-primary">{title}</h3>
+                    {s.obiettivi && (
+                      <div>
+                        <h4 className="text-sm font-bold">Obiettivi</h4>
+                        <p className="whitespace-pre-line">{s.obiettivi}</p>
+                      </div>
+                    )}
+                    {s.strumenti && (
+                      <div>
+                        <h4 className="text-sm font-bold">Strumenti</h4>
+                        <p className="whitespace-pre-line">{s.strumenti}</p>
+                      </div>
+                    )}
+                    {s.risposta && (
+                      <div>
+                        <h4 className="text-sm font-bold">{question}</h4>
+                        <p>{s.risposta}</p>
+                      </div>
+                    )}
+                    <div className="space-y-1 pt-1">
+                      {CHECKPOINTS.map(c => (
+                        <ScoreBoxes key={c.key} label={c.label} value={s[c.key]} />
+                      ))}
+                    </div>
                   </section>
-                ),
-            )}
+                )
+              })}
+            </div>
           </div>
         </article>
       ))}
@@ -75,7 +95,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
               {missing.map(r => (
                 <li key={r.leaderId} className="flex items-center gap-2 text-sm">
                   <StaffAvatar img={r.img} name={r.nome} size={32} />
-                  {r.nome}
+                  {firstName(r.nome)}
                 </li>
               ))}
             </ul>

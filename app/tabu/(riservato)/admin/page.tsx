@@ -12,12 +12,13 @@ export default async function AdminPage() {
     { href: '/tabu/admin/staff/', title: 'Staff', text: `${counts.staff} righe (capi e RS), ${counts.withEmail} con accesso al Tabù` },
     { href: '/tabu/admin/media/', title: 'Foto e video', text: `${counts.media} link alle raccolte` },
     { href: '/tabu/admin/totem/', title: 'Totem', text: `${counts.totem} nomi totem` },
+    { href: '/tabu/admin/anni/', title: 'Anni scout', text: 'La domanda dell’anno nel Progetto del Capo' },
   ]
 
   return (
     <div className="space-y-6">
       <h1 className="font-display text-4xl text-primary">Admin</h1>
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2">
         {sections.map(s => (
           <Link key={s.href} href={s.href} className="card bg-base-200 hover:shadow-md transition-shadow">
             <div className="card-body">

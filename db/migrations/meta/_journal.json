@@ -15,6 +15,20 @@
       "when": 1793141290795,
       "tag": "0001_tabu",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1793146267878,
+      "tag": "0002_drop_project_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1793146268266,
+      "tag": "0003_project_template",
+      "breakpoints": true
     }
   ]
 }

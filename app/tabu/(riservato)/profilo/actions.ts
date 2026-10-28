@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { db } from '@/lib/db'
 import { requireLeader } from '@/lib/dal'
 import { replaceStaffPhoto } from '@/lib/staff-photo'
+import { isLcStaff } from '@/lib/staff'
 import { staffMember } from '@/db/schema'
 import type { ActionResult } from '@/components/tabu/types'
 
@@ -26,6 +27,8 @@ const DescSchema = z.object({
 
 export async function updateMyDesc(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   const leader = await requireLeader()
+  // The description only appears on the L/C pages
+  if (!isLcStaff(leader.staff)) return { ok: false, message: 'La descrizione è solo per i capi L/C.' }
   const parsed = DescSchema.safeParse({ desc: formData.get('desc') ?? '' })
   if (!parsed.success) return { ok: false, message: parsed.error.issues[0].message }
 

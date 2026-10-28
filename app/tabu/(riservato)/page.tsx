@@ -3,7 +3,7 @@ import { ArrowRightIcon, ImagesIcon, NotebookIcon, UsersThreeIcon } from '@phosp
 import { requireLeader } from '@/lib/dal'
 import { getAdminCounts, getDashboardStats, getProject } from '@/lib/tabu'
 import { scoutYearOf } from '@/lib/scout-year'
-import { firstName, formatDate } from '@/lib/format'
+import { filledSentence, firstName, formatDate } from '@/lib/format'
 import { splitStaff, staffPages } from '@/lib/staff'
 import StaffAvatar from '@/components/tabu/StaffAvatar'
 import CodiceSocio from '@/components/mdx/CodiceSocio'
@@ -48,7 +48,7 @@ export default async function Dashboard() {
               Progetti della Co.Ca.
             </h2>
             <p>
-              <b>{stats.filled}</b> capi su {stats.leaders} hanno compilato il progetto {year}.
+              {filledSentence(stats.filled, stats.leaders, year)}
             </p>
             {stats.latest.length > 0 && (
               <ul className="space-y-2">
@@ -56,7 +56,7 @@ export default async function Dashboard() {
                   <li key={p.nome} className="flex items-center gap-2 text-sm">
                     <StaffAvatar img={p.img} name={p.nome} size={28} />
                     <span>
-                      {p.nome} · {formatDate(p.updatedAt)}
+                      {firstName(p.nome)} · {formatDate(p.updatedAt)}
                     </span>
                   </li>
                 ))}
@@ -128,6 +128,12 @@ export default async function Dashboard() {
                     Totem
                   </Link>{' '}
                   · {admin.totem} nomi
+                </li>
+                <li>
+                  <Link className="link" href="/tabu/admin/anni/">
+                    Anni scout
+                  </Link>{' '}
+                  · domanda del progetto
                 </li>
               </ul>
             </div>
