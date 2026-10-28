@@ -27,6 +27,7 @@ In questa repository è presente e qui documentato il frontend, mentre il [Middl
       + [Front Matter](#front-matter)
       + [Menu](#menu)
    * [Database 🗄️](#database-)
+   * [Tabù 🔒](#tabù-)
    * [Immagini 🖼️](#immagini-)
    * [Analytics 📊](#analytics-)
    * [Hosting ☁️](#hosting-)
@@ -256,6 +257,8 @@ I dati che cambiano nel tempo sono in un database SQLite ospitato gratuitamente 
 | `member` | codici socio, nomi e date di nascita (dati personali!) | `CodiceSocio`, `/api/birthdays` (solo nome e iniziale) |
 | `staff_member` | capi (`coca = 1`) e RS in servizio (`coca = 0`) | `<Staff />` |
 | `media` | link alle raccolte di foto e video | `<LnkYearGrid />` |
+| `year_project` | progetto dell'anno di ogni capo | Tabù |
+| `user`, `session`, `account`, `verification` | accessi al Tabù (gestite da Better Auth) | Tabù |
 
 Le letture delle pagine pubbliche sono in `lib/data.ts` e sono in cache: le pagine restano statiche e vengono rigenerate solo quando una modifica chiama `revalidateTag`.
 
@@ -268,6 +271,7 @@ npm run db:studio                        # interfaccia web per guardare e modifi
 npm run db:import-d1 -- d1.sql           # importa totem e codici socio da un export del vecchio Worker
 npm run db:import-csv -- staff           # importa/aggiorna i capi da content/_capi.csv
 npm run db:import-csv -- media           # sostituisce i link foto/video con content/_media.csv
+npm run db:set-leader -- <slug> <email> [--admin]   # email di accesso al Tabù di un capo
 ```
 
 L'export del vecchio database Cloudflare D1 si ottiene, dalla cartella del Worker, con `npx wrangler d1 export people --remote --output=d1.sql`.
@@ -277,11 +281,21 @@ Note sui capi (`staff_member`):
 - Il nome mostrato dipende dalla pagina: nelle pagine con `coca` si vedono nome e cognome; nelle pagine L/C (`staff == {L, C}`) solo il `nomeCaccia`, ovvero il personaggio interpretato dai capi in LC (non il nome Totem), in modo da mantenere i capi anonimi ai bambini; nelle altre pagine solo il nome di battesimo.
 - Se nel campo `ruolo` è presente una `|`, il contenuto antecedente verrà mostrato quando `staff == *`, il contenuto successivo negli altri casi. 
 - Separare i doppi incarichi con un `|` nel campo `staff`. I valori possibili sono gli stessi riportati in precedenza.
-- Il campo `img` è il nome della foto del capo, che si deve trovare nella cartella `/img/staff` su ImageKit (se il percorso della foto è `/img/staff/capo.jpg`, il campo deve essere `capo.jpg`).
+- Il campo `img` è il nome della foto del capo nella cartella `/img/staff` su ImageKit (se il percorso della foto è `/img/staff/capo.jpg`, il campo deve essere `capo.jpg`); le foto caricate dal Tabù salvano invece il percorso completo.
 - Il campo `order` è facoltativo. Se presente, sovrascrive l'ordine delle righe, andando a posizionare i capi secondo l'ordine crescente. Utile solo in caso di doppi servizi.
 - Solo i capi (`coca = 1`) possono avere un'email: il database rifiuta un'email su una riga RS.
 
 Le citazioni (`<Quote type="..." />`) non cambiano mai e sono in `content/quotes.ts`.
+
+## Tabù 🔒
+
+Il Tabù (`/tabu`) è l'area riservata ai capi: ognuno scrive il proprio progetto dell'anno (leggibile da tutti i capi, modificabile solo da chi l'ha scritto), cambia la propria foto e descrizione e cerca i codici socio senza token. Gli admin gestiscono anche staff (email di accesso comprese), link di foto e video e totem: le modifiche compaiono sul sito pubblico in pochi secondi, senza nuovo deploy.
+
+- **Accesso**: con Google ([Better Auth](https://www.better-auth.com), `lib/auth.ts`). Possono entrare solo le email presenti su una riga di `staff_member` con `coca = 1`; gli RS in servizio non possono avere un'email. Il primo admin si crea con `npm run db:set-leader -- <slug> <email> --admin`, poi le email si gestiscono da *Admin → Staff*.
+- **Controlli**: `proxy.ts` rimanda al login chi non ha il cookie di sessione, ma il controllo vero è in `lib/dal.ts` (`requireLeader()` / `requireAdmin()`), chiamato da ogni pagina e ogni server action.
+- **Foto**: il browser ritaglia la foto in un quadrato 512×512; il server la carica su ImageKit (cartella `IMAGEKIT_STAFF_FOLDER`: `/dev/staff/` in locale, `/img/staff/` online) e cancella la precedente solo se era stata caricata dal sito.
+- **Google**: nel client OAuth della Google Cloud console vanno autorizzati i redirect `http://localhost:3000/api/auth/callback/google` e `https://mirandola2.it/api/auth/callback/google`.
+- **In locale senza Google**: `npm run db:dev-login -- <email>` apre una sessione per un capo e stampa il cookie da impostare nel browser (solo con un database `file:`).
 
 ## Immagini 🖼️
 
@@ -294,6 +308,6 @@ Le statistiche del sito sono gestite da [Vercel Web Analytics](https://vercel.co
 
 ## Hosting ☁️
 
-Il sito è ospitato gratuitamente su [Vercel](https://vercel.com) (piano Hobby) e il database su Turso (piano gratuito). Il dominio è `mirandola2.it`. Le pagine pubbliche sono statiche; girano come funzioni solo le API (`/api/...`) e la rigenerazione delle pagine dopo una modifica ai dati. Sitemap e `robots.txt` sono generati da `app/sitemap.ts` e `app/robots.ts`.
+Il sito è ospitato gratuitamente su [Vercel](https://vercel.com) (piano Hobby) e il database su Turso (piano gratuito). Il dominio è `mirandola2.it`. Sitemap e `robots.txt` sono generati da `app/sitemap.ts` e `app/robots.ts`.
 
-Su Vercel vanno impostate le stesse variabili d'ambiente di `.env.example` (`TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `MEMBER_PSK_SHA256`).
+Su Vercel vanno impostate le stesse variabili d'ambiente di `.env.example` (database, `MEMBER_PSK_SHA256`, Better Auth, Google, ImageKit), con `BETTER_AUTH_URL=https://mirandola2.it` e `IMAGEKIT_STAFF_FOLDER=/img/staff/`. Le pagine pubbliche sono statiche; girano come funzioni solo le API (`/api/...`), il Tabù e la rigenerazione delle pagine dopo una modifica ai dati.

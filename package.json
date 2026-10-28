@@ -12,9 +12,12 @@
     "db:studio": "drizzle-kit studio",
     "db:import-d1": "tsx scripts/import-d1.mts",
     "db:import-csv": "tsx scripts/import-csv.mts",
-    "test": "tsx --test lib/*.test.ts"
+    "test": "tsx --test lib/*.test.ts",
+    "db:set-leader": "tsx scripts/set-leader.mts",
+    "db:dev-login": "tsx scripts/dev-login.mts"
   },
   "dependencies": {
+    "@imagekit/nodejs": "^7.13.0",
     "@libsql/client": "^0.18.0",
     "@mdx-js/loader": "^3.1.1",
     "@mdx-js/mdx": "^3.1.1",
@@ -22,6 +25,7 @@
     "@phosphor-icons/react": "^2.1.10",
     "@tailwindcss/typography": "^0.5.20",
     "@vercel/analytics": "^2.0.1",
+    "better-auth": "^1.7.12",
     "canvas-confetti": "^1.9.4",
     "daisyui": "^5.7.50",
     "drizzle-orm": "^0.45.4",

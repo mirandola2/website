@@ -5,6 +5,7 @@ import { cookies } from 'next/headers'
 import { sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { member } from '@/db/schema'
+import { getLeader } from '@/lib/dal'
 
 export type MemberCodeResult =
   | { ok: true; people: { name: string; code: string; birthday: string }[] }
@@ -19,7 +20,8 @@ async function hasValidToken() {
 }
 
 export async function searchMemberCode(name: string): Promise<MemberCodeResult> {
-  if (!(await hasValidToken())) return { ok: false, error: 'unauthorized' }
+  // A logged-in leader, or anyone with the "Token Magico"
+  if (!(await getLeader()) && !(await hasValidToken())) return { ok: false, error: 'unauthorized' }
 
   const cleaned = typeof name === 'string' ? name.trim().replace(/\s+/g, ' ') : ''
   if (!cleaned || cleaned.length > 100) return { ok: false, error: 'invalid' }

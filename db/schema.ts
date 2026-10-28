@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm'
-import { check, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
+import { check, index, integer, sqliteTable, text, unique } from 'drizzle-orm/sqlite-core'
 
 // Column names are camelCase here and snake_case in SQL (`casing: 'snake_case'` in lib/db.ts
 // and drizzle.config.ts).
@@ -22,7 +22,8 @@ export const member = sqliteTable('member', {
 })
 
 // From content/_capi.csv: leaders (coca = 1) and RS in service (coca = 0), in the CSV row order (id).
-// Only leaders can have an email, so RS can never log in.
+// Only leaders can have an email, so RS can never log in. The email (lowercase) is the login
+// allowlist and the link to the Better Auth `user` (lib/auth.ts, lib/dal.ts).
 export const staffMember = sqliteTable(
   'staff_member',
   {
@@ -59,3 +60,86 @@ export const media = sqliteTable('media', {
   url: text().notNull(),
   sortOrder: integer().notNull().default(0),
 })
+
+// A leader's yearly project: readable by every leader, editable only by its owner
+export const yearProject = sqliteTable(
+  'year_project',
+  {
+    id: integer().primaryKey({ autoIncrement: true }),
+    staffMemberId: integer()
+      .notNull()
+      .references(() => staffMember.id, { onDelete: 'cascade' }),
+    // '2026-27'
+    scoutYear: text().notNull(),
+    titolo: text().notNull().default(''),
+    obiettivi: text().notNull().default(''),
+    tappe: text().notNull().default(''),
+    verifica: text().notNull().default(''),
+    updatedAt: integer({ mode: 'timestamp_ms' }).notNull(),
+  },
+  t => [unique().on(t.staffMemberId, t.scoutYear)],
+)
+
+// Better Auth tables (core schema: user, session, account, verification)
+
+export const user = sqliteTable('user', {
+  id: text().primaryKey(),
+  name: text().notNull(),
+  email: text().notNull().unique(),
+  emailVerified: integer({ mode: 'boolean' }).notNull().default(false),
+  image: text(),
+  createdAt: integer({ mode: 'timestamp_ms' }).notNull(),
+  updatedAt: integer({ mode: 'timestamp_ms' }).notNull(),
+})
+
+export const session = sqliteTable(
+  'session',
+  {
+    id: text().primaryKey(),
+    expiresAt: integer({ mode: 'timestamp_ms' }).notNull(),
+    token: text().notNull().unique(),
+    createdAt: integer({ mode: 'timestamp_ms' }).notNull(),
+    updatedAt: integer({ mode: 'timestamp_ms' }).notNull(),
+    ipAddress: text(),
+    userAgent: text(),
+    userId: text()
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+  },
+  t => [index('session_user_id_idx').on(t.userId)],
+)
+
+export const account = sqliteTable(
+  'account',
+  {
+    id: text().primaryKey(),
+    accountId: text().notNull(),
+    providerId: text().notNull(),
+    userId: text()
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    accessToken: text(),
+    refreshToken: text(),
+    idToken: text(),
+    accessTokenExpiresAt: integer({ mode: 'timestamp_ms' }),
+    refreshTokenExpiresAt: integer({ mode: 'timestamp_ms' }),
+    scope: text(),
+    password: text(),
+    createdAt: integer({ mode: 'timestamp_ms' }).notNull(),
+    updatedAt: integer({ mode: 'timestamp_ms' }).notNull(),
+  },
+  t => [index('account_user_id_idx').on(t.userId)],
+)
+
+export const verification = sqliteTable(
+  'verification',
+  {
+    id: text().primaryKey(),
+    identifier: text().notNull(),
+    value: text().notNull(),
+    expiresAt: integer({ mode: 'timestamp_ms' }).notNull(),
+    createdAt: integer({ mode: 'timestamp_ms' }).notNull(),
+    updatedAt: integer({ mode: 'timestamp_ms' }).notNull(),
+  },
+  t => [index('verification_identifier_idx').on(t.identifier)],
+)

@@ -4,9 +4,13 @@ import { asc } from 'drizzle-orm'
 import { db } from './db'
 import { media, member, staffMember, totem } from '@/db/schema'
 
-// Cached database reads for the public pages: they stay static and are regenerated only when a
-// write calls `revalidateTag('<tag>', 'max')`. Never select personal fields (email, birthday...)
-// here unless the caller filters them out.
+// Cached database reads for the public pages: they stay static and are regenerated when a write
+// from the site calls `revalidateTag('<tag>', 'max')`. Never select personal fields (email,
+// birthday...) here unless the caller filters them out.
+//
+// The cache outlives builds (.next/cache, and Vercel's build cache), so edits made outside the
+// site (import scripts, Turso shell) would never show up: REVALIDATE refreshes them within an hour.
+const REVALIDATE = 3600
 
 export const getTotem = unstable_cache(
   () =>
@@ -15,7 +19,7 @@ export const getTotem = unstable_cache(
       .from(totem)
       .orderBy(asc(totem.year), asc(totem.name)),
   ['totem'],
-  { tags: ['totem'] },
+  { tags: ['totem'], revalidate: REVALIDATE },
 )
 
 export type StaffMember = Awaited<ReturnType<typeof getStaffMembers>>[number]
@@ -37,7 +41,7 @@ export const getStaffMembers = unstable_cache(
       .from(staffMember)
       .orderBy(asc(staffMember.id)),
   ['staff'],
-  { tags: ['staff'] },
+  { tags: ['staff'], revalidate: REVALIDATE },
 )
 
 export const getMedia = unstable_cache(
@@ -47,7 +51,7 @@ export const getMedia = unstable_cache(
       .from(media)
       .orderBy(asc(media.sortOrder), asc(media.id)),
   ['media'],
-  { tags: ['media'] },
+  { tags: ['media'], revalidate: REVALIDATE },
 )
 
 // Not cached: only the birthdays route reads it, and that route is cached as a whole

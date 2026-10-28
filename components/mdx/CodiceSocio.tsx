@@ -4,10 +4,13 @@ import { useState, useRef, useSyncExternalStore } from 'react'
 import { useCookie } from '@/hooks/useCookie'
 import { sha256Hex } from '@/lib/sha256'
 import { searchMemberCode as searchMemberCodeAction } from '@/app/actions/member'
-import { MagnifyingGlassIcon, SignOutIcon, FloppyDiskIcon } from '@phosphor-icons/react'
+import { authClient } from '@/lib/auth-client'
+import { MagnifyingGlassIcon, SignOutIcon, FloppyDiskIcon, UserCheckIcon } from '@phosphor-icons/react'
 
 interface CodiceSocioProps {
   lastupdate?: string
+  // Rendered inside the Tabù: the user is a logged-in leader, no token needed
+  leader?: boolean
 }
 
 interface PersonData {
@@ -24,9 +27,14 @@ function subscribe(listener: () => void) {
 }
 const notify = () => listeners.forEach(l => l())
 
-export default function CodiceSocio({ lastupdate }: CodiceSocioProps) {
+export default function CodiceSocio({ lastupdate, leader = false }: CodiceSocioProps) {
   const pskCookie = useCookie('psk')
-  const logged = useSyncExternalStore(subscribe, () => pskCookie.get()?.length === 64, () => false)
+  const hasToken = useSyncExternalStore(subscribe, () => pskCookie.get()?.length === 64, () => false)
+  // Only leaders can have a session (lib/auth.ts). Hiding the token form is cosmetic: the server
+  // action checks the session or the token again.
+  const { data: session } = authClient.useSession()
+  const isLeader = leader || !!session
+  const logged = isLeader || hasToken
   const [name, setName] = useState('')
   const [pw, setPw] = useState('')
   const [loading, setLoading] = useState(false)
@@ -75,7 +83,12 @@ export default function CodiceSocio({ lastupdate }: CodiceSocioProps) {
         <div className="card-body gap-4">
           <div className="flex items-center justify-between gap-2">
             <h2 className="card-title">Ricerca codice socio</h2>
-            {logged && (
+            {isLeader ? (
+              <span className="badge badge-ghost gap-1">
+                <UserCheckIcon size={16} weight="bold" aria-hidden />
+                Accesso come capo
+              </span>
+            ) : hasToken && (
               <button type="button" className="btn btn-ghost btn-sm" onClick={logout}>
                 <SignOutIcon size={18} weight="bold" aria-hidden />
                 Reset Token
