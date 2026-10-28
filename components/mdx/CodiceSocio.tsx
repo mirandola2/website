@@ -9,8 +9,6 @@ import { MagnifyingGlassIcon, SignOutIcon, FloppyDiskIcon, UserCheckIcon } from 
 
 interface CodiceSocioProps {
   lastupdate?: string
-  // Rendered inside the Tabù: the user is a logged-in leader, no token needed
-  leader?: boolean
 }
 
 interface PersonData {
@@ -27,13 +25,13 @@ function subscribe(listener: () => void) {
 }
 const notify = () => listeners.forEach(l => l())
 
-export default function CodiceSocio({ lastupdate, leader = false }: CodiceSocioProps) {
+export default function CodiceSocio({ lastupdate }: CodiceSocioProps) {
   const pskCookie = useCookie('psk')
   const hasToken = useSyncExternalStore(subscribe, () => pskCookie.get()?.length === 64, () => false)
   // Only leaders can have a session (lib/auth.ts). Hiding the token form is cosmetic: the server
   // action checks the session or the token again.
   const { data: session } = authClient.useSession()
-  const isLeader = leader || !!session
+  const isLeader = !!session
   const logged = isLeader || hasToken
   const [name, setName] = useState('')
   const [pw, setPw] = useState('')

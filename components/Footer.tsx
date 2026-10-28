@@ -55,7 +55,7 @@ export default function Footer() {
             </button>
           </form>
           <h3 className="font-bold text-lg text-primary">Credits</h3>
-          <p className="py-4 font-normal text-justify">
+          <p className="py-4 font-normal text-left">
             Il sito web che stai leggendo è stato sviluppato nel corso di più di dieci anni da{' '}
             <i>Lince Spensierata</i> e poi da <i>Aquila Ambiziosa</i> e tutti coloro che li hanno
             aiutati durante le fasi di costruzione e revisione. Il codice sorgente dell&apos;intero

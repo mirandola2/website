@@ -4,15 +4,15 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { SignOutIcon } from '@phosphor-icons/react'
+import { SignOutIcon, UserIcon } from '@phosphor-icons/react'
 import { authClient } from '@/lib/auth-client'
+import { confirmLeave } from '@/lib/unsaved-changes'
 import StaffAvatar from './StaffAvatar'
 
 const sections = [
   { href: '/tabu/', label: 'Bacheca' },
   { href: '/tabu/progetto/', label: 'Il mio progetto' },
-  { href: '/tabu/progetti/', label: 'Progetti Co.Ca.' },
-  { href: '/tabu/profilo/', label: 'Profilo' },
+  { href: '/tabu/progetti/', label: 'Tutti i progetti' },
 ]
 
 export interface NavbarLeader {
@@ -31,6 +31,7 @@ export default function TabuNavbar({ leader }: { leader: NavbarLeader | null }) 
   const links = leader?.isAdmin ? [...sections, { href: '/tabu/admin/', label: 'Admin' }] : sections
 
   async function signOut() {
+    if (!confirmLeave()) return
     setLeaving(true)
     await authClient.signOut()
     router.push('/tabu/login/')
@@ -66,20 +67,31 @@ export default function TabuNavbar({ leader }: { leader: NavbarLeader | null }) 
         </Link>
         {leader && nav('hidden md:flex items-center gap-1 ms-4')}
         {leader && (
-          <div className="ms-auto flex items-center gap-2">
-            <Link href="/tabu/profilo/" className="flex items-center gap-2" aria-label="Profilo">
-              <StaffAvatar img={leader.img} name={leader.firstName} size={40} />
-              <span className="hidden sm:inline font-medium">{leader.firstName}</span>
-            </Link>
-            <button
-              type="button"
-              className="btn btn-sm btn-ghost text-primary-content hover:bg-white/10 border-0"
-              onClick={signOut}
-              disabled={leaving}
+          // Account menu: the photo opens Profilo / Esci (daisyUI dropdown, opens on focus)
+          <div className="dropdown dropdown-end ms-auto">
+            <div
+              tabIndex={0}
+              role="button"
+              aria-label={`Menu di ${leader.firstName}`}
+              className="block rounded-box cursor-pointer focus-visible:outline-2 focus-visible:outline-white"
             >
-              <SignOutIcon size={18} weight="bold" aria-hidden />
-              Esci
-            </button>
+              <StaffAvatar img={leader.img} name={leader.firstName} size={44} />
+            </div>
+            <ul tabIndex={0} className="dropdown-content menu z-10 mt-2 w-48 rounded-box bg-base-100 p-2 text-base-content shadow-xl">
+              <li className="menu-title">{leader.firstName}</li>
+              <li>
+                <Link href="/tabu/profilo/" onClick={() => (document.activeElement as HTMLElement | null)?.blur()}>
+                  <UserIcon size={18} aria-hidden />
+                  Profilo
+                </Link>
+              </li>
+              <li>
+                <button type="button" onClick={signOut} disabled={leaving}>
+                  <SignOutIcon size={18} aria-hidden />
+                  Esci
+                </button>
+              </li>
+            </ul>
           </div>
         )}
       </div>

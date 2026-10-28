@@ -257,7 +257,8 @@ I dati che cambiano nel tempo sono in un database SQLite ospitato gratuitamente 
 | `member` | codici socio, nomi e date di nascita (dati personali!) | `CodiceSocio`, `/api/birthdays` (solo nome e iniziale) |
 | `staff_member` | capi (`coca = 1`) e RS in servizio (`coca = 0`) | `<Staff />` |
 | `media` | link alle raccolte di foto e video | `<LnkYearGrid />` |
-| `year_project` | progetto dell'anno di ogni capo | Tabù |
+| `year_project` | Progetto del Capo di ogni capo, per anno | Tabù |
+| `scout_year` | anni visibili/attivi e domanda dell'anno del Progetto del Capo | Tabù |
 | `user`, `session`, `account`, `verification` | accessi al Tabù (gestite da Better Auth) | Tabù |
 
 Le letture delle pagine pubbliche sono in `lib/data.ts` e sono in cache: le pagine restano statiche e vengono rigenerate solo quando una modifica chiama `revalidateTag`.
@@ -289,11 +290,11 @@ Le citazioni (`<Quote type="..." />`) non cambiano mai e sono in `content/quotes
 
 ## Tabù 🔒
 
-Il Tabù (`/tabu`) è l'area riservata ai capi: ognuno scrive il proprio progetto dell'anno (leggibile da tutti i capi, modificabile solo da chi l'ha scritto), cambia la propria foto e descrizione e cerca i codici socio senza token. Gli admin gestiscono anche staff (email di accesso comprese), link di foto e video e totem: le modifiche compaiono sul sito pubblico in pochi secondi, senza nuovo deploy.
+Il Tabù (`/tabu`, nel menu *Strumenti*) è l'area riservata ai capi: ognuno compila il proprio Progetto del Capo (le quattro aree del modello cartaceo, leggibile da tutti i capi, modificabile solo da chi l'ha scritto), vede il proprio codice socio e cambia la propria foto (e la descrizione, per i capi L/C). In *Admin → Progetti del Capo* si scelgono gli anni visibili, quelli ancora modificabili (attivi) e la domanda dell'anno (es. "Che pozione userai?"). Gli admin gestiscono anche staff (email di accesso comprese), link di foto e video e totem: le modifiche compaiono sul sito pubblico in pochi secondi, senza nuovo deploy.
 
 - **Accesso**: con Google ([Better Auth](https://www.better-auth.com), `lib/auth.ts`). Possono entrare solo le email presenti su una riga di `staff_member` con `coca = 1`; gli RS in servizio non possono avere un'email. Il primo admin si crea con `npm run db:set-leader -- <slug> <email> --admin`, poi le email si gestiscono da *Admin → Staff*.
 - **Controlli**: `proxy.ts` rimanda al login chi non ha il cookie di sessione, ma il controllo vero è in `lib/dal.ts` (`requireLeader()` / `requireAdmin()`), chiamato da ogni pagina e ogni server action.
-- **Foto**: il browser ritaglia la foto in un quadrato 512×512; il server la carica su ImageKit (cartella `IMAGEKIT_STAFF_FOLDER`: `/dev/staff/` in locale, `/img/staff/` online) e cancella la precedente solo se era stata caricata dal sito.
+- **Foto**: il browser ritaglia la foto in un quadrato 256×256 (massimo 100 KB); il server la carica su ImageKit (cartella `IMAGEKIT_STAFF_FOLDER`: `/dev/staff/` in locale, `/img/staff/` online) e cancella la precedente solo se era stata caricata dal sito.
 - **Google**: nel client OAuth della Google Cloud console vanno autorizzati i redirect `http://localhost:3000/api/auth/callback/google` e `https://mirandola2.it/api/auth/callback/google`.
 - **In locale senza Google**: `npm run db:dev-login -- <email>` apre una sessione per un capo e stampa il cookie da impostare nel browser (solo con un database `file:`).
 

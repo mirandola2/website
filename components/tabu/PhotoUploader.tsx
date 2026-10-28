@@ -4,10 +4,10 @@ import { useEffect, useRef, useState, useTransition } from 'react'
 import { UploadSimpleIcon } from '@phosphor-icons/react'
 import type { ActionResult } from './types'
 
-const SIZE = 512
+const SIZE = 256
 
-// Center square crop, resized in the browser to 512×512 (WebP where supported, else JPEG):
-// ~30–80 KB, far below the server action body limit.
+// Center square crop, resized in the browser to 256×256 (WebP where supported, else JPEG):
+// ~10–30 KB, under the server's 100 KB limit.
 async function toSquare(file: File): Promise<File> {
   const bitmap = await createImageBitmap(file)
   const side = Math.min(bitmap.width, bitmap.height)

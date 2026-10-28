@@ -79,11 +79,14 @@ export const yearProject = sqliteTable(
   t => [unique().on(t.staffMemberId, t.scoutYear)],
 )
 
-// Per scout year settings: the variable question of the project template
+// Per scout year settings of the Progetto del Capo (lib/tabu.ts getYearSettings): the variable
+// question of the template, whether the year is listed (visible) and still editable (active)
 export const scoutYear = sqliteTable('scout_year', {
   // '2026-27'
   id: text().primaryKey(),
   question: text().notNull(),
+  visible: integer({ mode: 'boolean' }).notNull().default(false),
+  active: integer({ mode: 'boolean' }).notNull().default(false),
 })
 
 // Better Auth tables (core schema: user, session, account, verification)

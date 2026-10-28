@@ -9,7 +9,7 @@ import type { ActionResult } from '@/components/tabu/types'
 // Shared by the leader's own upload (profilo) and the admin's (any row, RS included). The caller
 // decides which row: never trust an id from the form without checking the session first.
 export async function replaceStaffPhoto(row: { id: number; slug: string; imgFileId: string | null }, file: unknown): Promise<ActionResult> {
-  if (!checkPhoto(file)) return { ok: false, message: 'La foto deve essere WebP, JPEG o PNG, al massimo 1 MB.' }
+  if (!checkPhoto(file)) return { ok: false, message: 'La foto deve essere WebP, JPEG o PNG, al massimo 100 KB.' }
   if (!process.env.IMAGEKIT_PRIVATE_KEY) return { ok: false, message: 'Caricamento foto non configurato (IMAGEKIT_PRIVATE_KEY).' }
 
   let uploaded

@@ -203,20 +203,28 @@ export async function deleteTotem(_prev: ActionResult, formData: FormData): Prom
   return row ? done('totem', `Eliminato ${row.name}.`) : { ok: false, message: 'Riga non trovata.' }
 }
 
-// --- Scout years ---
+// --- Progetto del Capo: scout years ---
 
 const YearSchema = z.object({
   id: z.string().refine(v => parseScoutYear(v) !== null, 'Anno non valido.'),
   question: requiredText(200, 'Domanda'),
+  visible: z.literal('on').optional(),
+  active: z.literal('on').optional(),
 })
 
-// The variable question of the project template, one per scout year
-export async function saveYearQuestion(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+// Per year: the template's variable question, whether it is listed and whether it is still editable
+export async function saveYearSettings(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   await requireAdmin()
   const parsed = YearSchema.safeParse(Object.fromEntries(formData))
   if (!parsed.success) return fail(parsed.error)
   const { id, question } = parsed.data
-  await db.insert(scoutYear).values({ id, question }).onConflictDoUpdate({ target: scoutYear.id, set: { question } })
+  const active = !!parsed.data.active
+  // An editable year must be reachable
+  const visible = active || !!parsed.data.visible
+  await db
+    .insert(scoutYear)
+    .values({ id, question, visible, active })
+    .onConflictDoUpdate({ target: scoutYear.id, set: { question, visible, active } })
   revalidatePath('/tabu', 'layout')
   return { ok: true, message: 'Salvato.' }
 }

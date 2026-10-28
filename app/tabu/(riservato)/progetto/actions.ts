@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { db } from '@/lib/db'
 import { requireLeader } from '@/lib/dal'
+import { getYearSetting } from '@/lib/tabu'
 import { parseScoutYear } from '@/lib/scout-year'
 import { CHECKPOINTS, MAX_ANSWER, MAX_TEXT, PROJECT_SECTIONS, type ProjectSections } from '@/lib/project'
 import { yearProject } from '@/db/schema'
@@ -49,6 +50,10 @@ export async function saveYearProject(_prev: ActionResult, formData: FormData): 
   const leader = await requireLeader()
   const parsed = ProjectSchema.safeParse({ scoutYear: formData.get('scoutYear'), sections: readSections(formData) })
   if (!parsed.success) return { ok: false, message: parsed.error.issues[0].message }
+  // Closed years (set in /tabu/admin/progetti) are read-only
+  if (!(await getYearSetting(parsed.data.scoutYear)).active) {
+    return { ok: false, message: 'Questo anno è chiuso: il progetto non si può più modificare.' }
+  }
 
   const sections = parsed.data.sections as ProjectSections
   const updatedAt = new Date()

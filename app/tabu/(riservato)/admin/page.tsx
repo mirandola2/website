@@ -12,7 +12,7 @@ export default async function AdminPage() {
     { href: '/tabu/admin/staff/', title: 'Staff', text: `${counts.staff} righe (capi e RS), ${counts.withEmail} con accesso al Tabù` },
     { href: '/tabu/admin/media/', title: 'Foto e video', text: `${counts.media} link alle raccolte` },
     { href: '/tabu/admin/totem/', title: 'Totem', text: `${counts.totem} nomi totem` },
-    { href: '/tabu/admin/anni/', title: 'Anni scout', text: 'La domanda dell’anno nel Progetto del Capo' },
+    { href: '/tabu/admin/progetti/', title: 'Progetti del Capo', text: 'Anni visibili, anni attivi e domanda dell’anno' },
   ]
 
   return (

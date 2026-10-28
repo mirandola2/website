@@ -1,21 +1,33 @@
 import type { Metadata } from 'next'
 import { requireLeader } from '@/lib/dal'
-import { getProjectsForYear, getProjectYears, getYearQuestion } from '@/lib/tabu'
-import { parseScoutYear, scoutYearOf, scoutYearOptions } from '@/lib/scout-year'
+import { getProjectsForYear, resolveYear } from '@/lib/tabu'
 import { filledSentence, firstName, formatDate } from '@/lib/format'
 import { CHECKPOINTS, isSectionEmpty, PROJECT_SECTIONS } from '@/lib/project'
 import { splitStaff, staffColors, staffLabels } from '@/lib/staff'
 import StaffAvatar from '@/components/tabu/StaffAvatar'
 import ScoreBoxes from '@/components/tabu/ScoreBoxes'
-import YearPicker from '@/components/tabu/YearPicker'
+import ProjectDialog from '@/components/tabu/ProjectDialog'
+import YearSelect from '@/components/tabu/YearSelect'
 
-export const metadata: Metadata = { title: 'Progetti della Co.Ca.' }
+export const metadata: Metadata = { title: 'Tutti i progetti' }
+
+function StaffBadges({ staff }: { staff: string }) {
+  return (
+    <>
+      {splitStaff(staff).map(s => (
+        <span key={s} className={`badge badge-sm border-0 ${staffColors[s] || 'bg-base-300'}`}>
+          {staffLabels[s] || s}
+        </span>
+      ))}
+    </>
+  )
+}
 
 export default async function ProjectsPage({ searchParams }: { searchParams: Promise<{ anno?: string }> }) {
   await requireLeader()
   const { anno } = await searchParams
-  const year = parseScoutYear(anno) !== null ? anno! : scoutYearOf()
-  const [rows, years, question] = await Promise.all([getProjectsForYear(year), getProjectYears(), getYearQuestion(year)])
+  const { year, visible } = await resolveYear(anno)
+  const rows = await getProjectsForYear(year.id)
   // Written projects first (most recent first), then who hasn't written one yet
   const written = rows
     .flatMap(r => (r.project ? [{ ...r, project: r.project }] : []))
@@ -25,28 +37,36 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="font-display text-4xl text-primary">Progetti della Co.Ca.</h1>
-        <YearPicker years={scoutYearOptions([...years, year])} current={year} basePath="/tabu/progetti/" />
+        <h1 className="font-display text-4xl text-primary">Tutti i Progetti dei Capi</h1>
+        {visible.length > 1 && <YearSelect years={visible.map(y => y.id)} current={year.id} basePath="/tabu/progetti/" />}
       </div>
-      <p className="opacity-70">
-        {filledSentence(written.length, rows.length, year)}
-      </p>
+      <p className="opacity-70">{filledSentence(written.length, rows.length, year.id.replace('-', '/20'))}</p>
 
-      {written.map(({ leaderId, nome, img, staff, project }) => (
-        <article key={leaderId} className="card bg-base-200">
-          <div className="card-body gap-4">
-            <header className="flex items-center gap-4">
-              <StaffAvatar img={img} name={nome} size={56} />
-              <div className="space-y-1">
-                <h2 className="text-xl font-bold text-primary">{firstName(nome)}</h2>
-                <div className="flex flex-wrap items-center gap-1 text-sm">
-                  {splitStaff(staff).map(s => (
-                    <span key={s} className={`badge badge-sm border-0 ${staffColors[s] || 'bg-base-300'}`}>
-                      {staffLabels[s] || s}
-                    </span>
-                  ))}
-                  <span className="opacity-60">· {formatDate(project.updatedAt)}</span>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {written.map(({ leaderId, nome, img, staff, project }) => (
+          <ProjectDialog
+            key={leaderId}
+            title={`Progetto di ${firstName(nome)}`}
+            trigger={
+              <div className="card-body flex-row items-center gap-4 p-4">
+                <StaffAvatar img={img} name={nome} size={56} />
+                <div className="space-y-1">
+                  <h2 className="text-lg font-bold text-primary">{firstName(nome)}</h2>
+                  <div className="flex flex-wrap gap-1">
+                    <StaffBadges staff={staff} />
+                  </div>
+                  <p className="text-xs opacity-60">Modificato il {formatDate(project.updatedAt)}</p>
                 </div>
+              </div>
+            }
+          >
+            <header className="flex items-center gap-4 mb-4 pe-8">
+              <StaffAvatar img={img} name={nome} size={56} />
+              <div>
+                <h2 className="text-2xl font-bold text-primary">{firstName(nome)}</h2>
+                <p className="text-sm opacity-70">
+                  Progetto del Capo {year.id.replace('-', '/20')} · {formatDate(project.updatedAt)}
+                </p>
               </div>
             </header>
             <div className="grid gap-3 md:grid-cols-2">
@@ -54,7 +74,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
                 const s = project.sections[key]
                 if (isSectionEmpty(s)) return null
                 return (
-                  <section key={key} className="rounded-box bg-base-100 p-4 space-y-2">
+                  <section key={key} className="rounded-box bg-base-200 p-4 space-y-2">
                     <h3 className="font-bold text-primary">{title}</h3>
                     {s.obiettivi && (
                       <div>
@@ -70,7 +90,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
                     )}
                     {s.risposta && (
                       <div>
-                        <h4 className="text-sm font-bold">{question}</h4>
+                        <h4 className="text-sm font-bold">{year.question}</h4>
                         <p>{s.risposta}</p>
                       </div>
                     )}
@@ -83,9 +103,9 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
                 )
               })}
             </div>
-          </div>
-        </article>
-      ))}
+          </ProjectDialog>
+        ))}
+      </div>
 
       {missing.length > 0 && (
         <section className="card bg-base-200">

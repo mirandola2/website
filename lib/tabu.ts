@@ -3,6 +3,7 @@ import { and, asc, count, desc, eq, isNotNull, sql } from 'drizzle-orm'
 import { db } from './db'
 import { media, scoutYear as scoutYearTable, staffMember, totem, yearProject } from '@/db/schema'
 import { DEFAULT_QUESTION, normalizeSections } from './project'
+import { scoutYearOf } from './scout-year'
 
 // Tabù reads: not cached (the Tabù is dynamic and only a few dozen leaders use it). Callers must
 // have checked requireLeader() first.
@@ -18,20 +19,46 @@ export async function getProject(staffMemberId: number, scoutYear: string) {
   return project ? { ...project, sections: normalizeSections(project.sections) } : null
 }
 
-// The year's variable question of the template ("Che pozione userai?")
-export async function getYearQuestion(scoutYear: string) {
-  const [row] = await db.select().from(scoutYearTable).where(eq(scoutYearTable.id, scoutYear))
-  return row?.question ?? DEFAULT_QUESTION
+export interface YearSetting {
+  id: string
+  question: string
+  // Listed in the year selectors
+  visible: boolean
+  // Projects can still be written; inactive years are read-only
+  active: boolean
 }
 
-export async function getYearQuestions() {
+// A year without a row: the current scout year is open by default, any other is hidden
+function defaultYear(id: string): YearSetting {
+  const current = id === scoutYearOf()
+  return { id, question: DEFAULT_QUESTION, visible: current, active: current }
+}
+
+// Every configured year plus the current one, most recent first
+export async function getYearSettings(): Promise<YearSetting[]> {
   const rows = await db.select().from(scoutYearTable)
-  return Object.fromEntries(rows.map(r => [r.id, r.question]))
+  const byId = new Map<string, YearSetting>(rows.map(r => [r.id, r]))
+  if (!byId.has(scoutYearOf())) byId.set(scoutYearOf(), defaultYear(scoutYearOf()))
+  return [...byId.values()].sort((a, b) => b.id.localeCompare(a.id))
 }
 
-export async function getProjectYears() {
-  const rows = await db.selectDistinct({ scoutYear: yearProject.scoutYear }).from(yearProject)
-  return rows.map(r => r.scoutYear)
+export async function getYearSetting(id: string): Promise<YearSetting> {
+  const [row] = await db.select().from(scoutYearTable).where(eq(scoutYearTable.id, id))
+  return row ?? defaultYear(id)
+}
+
+// The year to show when none is chosen: the current one if visible, else the latest visible one
+export function defaultVisibleYear(years: YearSetting[]) {
+  const visible = years.filter(y => y.visible)
+  return (visible.find(y => y.id === scoutYearOf()) ?? visible[0])?.id ?? scoutYearOf()
+}
+
+// Resolves ?anno=…: only visible years can be opened
+export async function resolveYear(requested: string | undefined) {
+  const years = await getYearSettings()
+  const visible = years.filter(y => y.visible)
+  const year = visible.find(y => y.id === requested) ?? visible.find(y => y.id === defaultVisibleYear(years))
+  return { year: year ?? defaultYear(scoutYearOf()), visible }
 }
 
 // Every leader with their project for the year (null when not written yet)

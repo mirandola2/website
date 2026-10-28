@@ -16,11 +16,3 @@ export function parseScoutYear(value: unknown) {
   const start = Number(value.slice(0, 4))
   return formatScoutYear(start) === value ? start : null
 }
-
-// The years offered in the Tabù selectors: the current one, the next one, and every earlier
-// one that already has a project
-export function scoutYearOptions(withProjects: string[], now = new Date()) {
-  const current = parseScoutYear(scoutYearOf(now))!
-  const years = new Set([formatScoutYear(current + 1), formatScoutYear(current), ...withProjects])
-  return [...years].filter(y => parseScoutYear(y) !== null).sort().reverse()
-}

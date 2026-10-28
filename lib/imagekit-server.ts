@@ -5,7 +5,8 @@ import ImageKit from '@imagekit/nodejs'
 // a separate folder (IMAGEKIT_STAFF_FOLDER=/dev/staff/), so tests never touch production photos.
 const STAFF_FOLDER = process.env.IMAGEKIT_STAFF_FOLDER || '/img/staff/'
 
-export const MAX_PHOTO_BYTES = 1024 * 1024
+// The browser sends a 256×256 photo (components/tabu/PhotoUploader.tsx): ~10–30 KB
+export const MAX_PHOTO_BYTES = 100 * 1024
 const PHOTO_TYPES = ['image/webp', 'image/jpeg', 'image/png']
 
 export function checkPhoto(file: unknown): file is File {

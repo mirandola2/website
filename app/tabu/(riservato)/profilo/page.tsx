@@ -18,15 +18,13 @@ export default async function ProfilePage() {
   const lc = isLcStaff(leader.staff)
   const huntName = lc && leader.nomeCaccia
 
-  // Everyone sees every field; only admins edit them (saveStaffMember checks it again)
+  // Non-admins see their fields read-only (admins get the full form, saveStaffMember checks it again)
   const fields = [
     { label: 'Nome e cognome', value: leader.nome },
     { label: 'Nome di caccia', value: leader.nomeCaccia },
     { label: 'Staff', value: codes.map(s => staffLabels[s] || s).join(', ') },
     { label: 'Ruolo', value: leader.ruolo.split('|').map(r => r.trim()).join(', ') },
     { label: 'Email di accesso', value: leader.email },
-    { label: 'Ordine (pagina Co.Ca.)', value: leader.order?.toString() },
-    { label: 'Admin', value: leader.isAdmin ? 'sì' : 'no' },
   ]
 
   return (
