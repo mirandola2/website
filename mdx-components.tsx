@@ -7,6 +7,7 @@ import Card from '@/components/mdx/Card'
 import Quoted from '@/components/mdx/Quoted'
 import Lnk from '@/components/mdx/Lnk'
 import LnkYearGrid from '@/components/mdx/LnkYearGrid'
+import LinkList from '@/components/mdx/LinkList'
 import GroupSize from '@/components/mdx/GroupSize'
 import MyDiv from '@/components/mdx/MyDiv'
 import MdxImage from '@/components/mdx/MdxImage'
@@ -25,6 +26,7 @@ export function useMDXComponents(): MDXComponents {
     Quoted,
     Lnk,
     LnkYearGrid,
+    LinkList,
     GroupSize,
     MyDiv,
     ImageLink,

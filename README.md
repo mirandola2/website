@@ -4,7 +4,7 @@
 
 Il frontend è la parte di un sito web che è visibile dall'utente. Nel nostro caso è stata costruita usando Next.js e Tailwind. Quest'ultimo è un framework CSS utilizzato insieme alla libreria Daisy UI per semplificare la parte di design del sito. Next.js è invece un framework JavaScript (in questo progetto scritto in TypeScript) che permette di costruire siti, anche statici, utilizzando **React**. Le icone del sito vengono dalla libreria [Phosphor Icons](https://phosphoricons.com/).
 
-Le pagine pubbliche sono statiche: vengono precompilate in pagine HTML, CSS e JavaScript al momento della build, senza bisogno di generare i contenuti a ogni richiesta dell’utente. A differenza dei siti tradizionali dinamici, che generano le pagine in tempo reale, questo permette una performance più elevata. I dati che cambiano (capi, totem, foto e video, compleanni) si trovano invece in un piccolo database (vedi [Database](#database-)): quando vengono modificati, Next.js rigenera solo le pagine interessate, senza bisogno di una nuova build.
+Le pagine pubbliche sono statiche: vengono precompilate in pagine HTML, CSS e JavaScript al momento della build, senza bisogno di generare i contenuti a ogni richiesta dell’utente. A differenza dei siti tradizionali dinamici, che generano le pagine in tempo reale, questo permette una performance più elevata. I dati che cambiano (capi, totem, foto e video, materiali e link, compleanni) si trovano invece in un piccolo database (vedi [Database](#database-)): quando vengono modificati, Next.js rigenera solo le pagine interessate, senza bisogno di una nuova build.
 
 Fino ad ottobre 2026, il sito era fatto con Nuxt, un framework basato su Vue. 
 
@@ -195,6 +195,7 @@ Componenti più specifici, usati ciascuno in una sola pagina e senza parametri (
 
 - `<GroupSize />`: mostra i numeri del gruppo (pagina _Il Gruppo_); i numeri sono scritti direttamente in `components/mdx/GroupSize.tsx`
 - `<LnkYearGrid />`: griglia per anno di foto e video, letti dalla tabella `media` del database (pagina _Foto e Video_)
+- `<LinkList />`: materiali e link raggruppati per categoria, con un filtro per categoria, letti dalla tabella `link` del database (pagina _Materiali e link_)
 - `<CodiceSocio lastupdate="2022-23" />`: ricerca del codice socio (pagina _Ricerca Codice Socio_). La ricerca avviene sul server (`app/actions/member.ts`) e funziona solo se il cookie `psk` contiene lo sha256 del "Token Magico", confrontato con `MEMBER_PSK_SHA256`
 - `<Morse />`: traduttore Morse
 - `<Alci />`: generatore di alci, con esportazione in PDF
@@ -257,6 +258,7 @@ I dati che cambiano nel tempo sono in un database SQLite ospitato gratuitamente 
 | `member` | codici socio, nomi e date di nascita (dati personali!) | `CodiceSocio`, `/api/birthdays` (solo nome e iniziale) |
 | `staff_member` | capi (`coca = 1`) e RS in servizio (`coca = 0`) | `<Staff />` |
 | `media` | link alle raccolte di foto e video | `<LnkYearGrid />` |
+| `link` | materiali e link, con categoria e tipo (icona) | `<LinkList />` (pagina `/materiale`) |
 | `year_project` | Progetto del Capo di ogni capo, per anno | Tabù |
 | `scout_year` | anni visibili/attivi e domanda dell'anno del Progetto del Capo | Tabù |
 | `user`, `session`, `account`, `verification` | accessi al Tabù (gestite da Better Auth) | Tabù |
@@ -290,7 +292,7 @@ Le citazioni (`<Quote type="..." />`) non cambiano mai e sono in `content/quotes
 
 ## Tabù 🔒
 
-Il Tabù (`/tabu`, nel menu *Strumenti*) è l'area riservata ai capi: ognuno compila il proprio Progetto del Capo (le quattro aree del modello cartaceo, leggibile da tutti i capi, modificabile solo da chi l'ha scritto), vede il proprio codice socio e cambia la propria foto (e la descrizione, per i capi L/C). In *Admin → Progetti del Capo* si scelgono gli anni visibili, quelli ancora modificabili (attivi) e la domanda dell'anno (es. "Che pozione userai?"). Gli admin gestiscono anche staff (email di accesso comprese), link di foto e video e totem: le modifiche compaiono sul sito pubblico in pochi secondi, senza nuovo deploy.
+Il Tabù (`/tabu`, nel menu *Strumenti*) è l'area riservata ai capi: ognuno compila il proprio Progetto del Capo (le quattro aree del modello cartaceo, leggibile da tutti i capi, modificabile solo da chi l'ha scritto), vede il proprio codice socio e cambia la propria foto (e la descrizione, per i capi L/C). In *Admin → Progetti del Capo* si scelgono gli anni visibili, quelli ancora modificabili (attivi) e la domanda dell'anno (es. "Che pozione userai?"). Gli admin gestiscono anche staff (email di accesso comprese), link di foto e video, materiali e link e totem: le modifiche compaiono sul sito pubblico in pochi secondi, senza nuovo deploy.
 
 - **Accesso**: con Google ([Better Auth](https://www.better-auth.com), `lib/auth.ts`). Possono entrare solo le email presenti su una riga di `staff_member` con `coca = 1`; gli RS in servizio non possono avere un'email. Il primo admin si crea con `npm run db:set-leader -- <slug> <email> --admin`, poi le email si gestiscono da *Admin → Staff*.
 - **Controlli**: `proxy.ts` rimanda al login chi non ha il cookie di sessione, ma il controllo vero è in `lib/dal.ts` (`requireLeader()` / `requireAdmin()`), chiamato da ogni pagina e ogni server action.

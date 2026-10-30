@@ -1,7 +1,7 @@
 import 'server-only'
 import { and, asc, count, desc, eq, isNotNull, sql } from 'drizzle-orm'
 import { db } from './db'
-import { media, scoutYear as scoutYearTable, staffMember, totem, yearProject } from '@/db/schema'
+import { link, media, scoutYear as scoutYearTable, staffMember, totem, yearProject } from '@/db/schema'
 import { DEFAULT_QUESTION, normalizeSections } from './project'
 import { scoutYearOf } from './scout-year'
 
@@ -98,12 +98,13 @@ export async function getDashboardStats(scoutYear: string) {
 }
 
 export async function getAdminCounts() {
-  const [[staff], [mediaRows], [totemRows]] = await Promise.all([
+  const [[staff], [mediaRows], [linkRows], [totemRows]] = await Promise.all([
     db
       .select({ n: count(), leaders: sql<number>`sum(${staffMember.email} IS NOT NULL)` })
       .from(staffMember),
     db.select({ n: count() }).from(media),
+    db.select({ n: count() }).from(link),
     db.select({ n: count() }).from(totem),
   ])
-  return { staff: staff.n, withEmail: staff.leaders ?? 0, media: mediaRows.n, totem: totemRows.n }
+  return { staff: staff.n, withEmail: staff.leaders ?? 0, media: mediaRows.n, links: linkRows.n, totem: totemRows.n }
 }

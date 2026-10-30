@@ -62,6 +62,16 @@ export const media = sqliteTable('media', {
   sortOrder: integer().notNull().default(0),
 })
 
+// Materials and links page (<LinkList />): free-text category to group by, type for the icon
+export const link = sqliteTable('link', {
+  id: integer().primaryKey({ autoIncrement: true }),
+  category: text().notNull(),
+  type: text({ enum: ['link', 'document', 'video', 'book'] }).notNull().default('link'),
+  name: text().notNull(),
+  url: text().notNull(),
+  sortOrder: integer().notNull().default(0),
+})
+
 // A leader's yearly project: readable by every leader, editable only by its owner. The four
 // areas of the paper template are one JSON value (lib/project.ts; read it with normalizeSections).
 export const yearProject = sqliteTable(

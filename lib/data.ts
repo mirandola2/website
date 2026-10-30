@@ -2,7 +2,7 @@ import 'server-only'
 import { unstable_cache } from 'next/cache'
 import { asc } from 'drizzle-orm'
 import { db } from './db'
-import { media, member, staffMember, totem } from '@/db/schema'
+import { link, media, member, staffMember, totem } from '@/db/schema'
 
 // Cached database reads for the public pages: they stay static and are regenerated when a write
 // from the site calls `revalidateTag('<tag>', 'max')`. Never select personal fields (email,
@@ -52,6 +52,16 @@ export const getMedia = unstable_cache(
       .orderBy(asc(media.sortOrder), asc(media.id)),
   ['media'],
   { tags: ['media'], revalidate: REVALIDATE },
+)
+
+export const getLinks = unstable_cache(
+  () =>
+    db
+      .select({ category: link.category, type: link.type, name: link.name, url: link.url })
+      .from(link)
+      .orderBy(asc(link.category), asc(link.sortOrder), asc(link.id)),
+  ['links'],
+  { tags: ['links'], revalidate: REVALIDATE },
 )
 
 // Not cached: only the birthdays route reads it, and that route is cached as a whole

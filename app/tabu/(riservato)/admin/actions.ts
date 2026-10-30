@@ -7,13 +7,13 @@ import { db } from '@/lib/db'
 import { requireAdmin } from '@/lib/dal'
 import { deleteStaffPhoto } from '@/lib/imagekit-server'
 import { replaceStaffPhoto } from '@/lib/staff-photo'
-import { media, scoutYear, staffMember, totem } from '@/db/schema'
+import { link, media, scoutYear, staffMember, totem } from '@/db/schema'
 import { parseScoutYear } from '@/lib/scout-year'
 import type { ActionResult } from '@/components/tabu/types'
 
 // Every action re-checks the admin flag: the pages hiding the forms is not enough.
 
-function done(tag: 'staff' | 'media' | 'totem', message: string): ActionResult {
+function done(tag: 'staff' | 'media' | 'links' | 'totem', message: string): ActionResult {
   revalidateTag(tag, 'max')
   revalidatePath('/tabu', 'layout')
   return { ok: true, message }
@@ -172,6 +172,36 @@ export async function replaceMediaUrls(_prev: ActionResult, formData: FormData):
     .where(sql`instr(${media.url}, ${find}) > 0`)
     .returning({ id: media.id })
   return done('media', `Link aggiornati: ${rows.length}.`)
+}
+
+// --- Materials and links ---
+
+const LinkSchema = z.object({
+  id: z.string().optional(),
+  category: requiredText(100, 'Categoria'),
+  type: z.enum(['link', 'document', 'video', 'book']),
+  name: requiredText(200, 'Nome'),
+  url: z.url('Link non valido.').max(2000),
+  sortOrder: z.coerce.number().int(),
+})
+
+export async function saveLink(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  await requireAdmin()
+  const parsed = LinkSchema.safeParse(Object.fromEntries(formData))
+  if (!parsed.success) return fail(parsed.error)
+  const { id: rawId, ...values } = parsed.data
+  if (rawId) {
+    await db.update(link).set(values).where(eq(link.id, Number(rawId)))
+    return done('links', 'Salvato.')
+  }
+  await db.insert(link).values(values)
+  return done('links', `Aggiunto “${values.name}”.`)
+}
+
+export async function deleteLink(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  await requireAdmin()
+  const [row] = await db.delete(link).where(eq(link.id, id.parse(formData.get('id')))).returning()
+  return row ? done('links', `Eliminato “${row.name}”.`) : { ok: false, message: 'Riga non trovata.' }
 }
 
 // --- Totem ---
