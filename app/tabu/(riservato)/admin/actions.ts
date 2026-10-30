@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath, revalidateTag } from 'next/cache'
-import { and, eq, ne, sql } from 'drizzle-orm'
+import { and, eq, max, ne, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/lib/db'
 import { requireAdmin } from '@/lib/dal'
@@ -28,11 +28,6 @@ const optionalText = (max: number) =>
     .max(max, `Massimo ${max} caratteri.`)
     .transform(v => v.replace(/\r\n?/g, '\n') || null)
 const requiredText = (max: number, label: string) => z.string().trim().min(1, `${label} obbligatorio.`).max(max)
-const optionalInt = z
-  .string()
-  .trim()
-  .transform(v => (v === '' ? null : Number(v)))
-  .refine(v => v === null || Number.isInteger(v), 'Numero non valido.')
 const id = z.coerce.number().int().positive()
 
 function slugify(text: string) {
@@ -59,7 +54,6 @@ const StaffSchema = z
       .regex(/^([A-Z]+)(\|[A-Z]+)*$/, 'Staff: codici separati da | (es. E|CJ).'),
     coca: z.literal('on').optional(),
     desc: optionalText(600),
-    order: optionalInt,
     email: z
       .string()
       .trim()
@@ -98,8 +92,33 @@ export async function saveStaffMember(_prev: ActionResult, formData: FormData): 
   for (let i = 2; (await db.select({ id: staffMember.id }).from(staffMember).where(eq(staffMember.slug, slug))).length; i++) {
     slug = `${base}-${i}`
   }
-  await db.insert(staffMember).values({ ...values, slug })
+  // New rows go last
+  const [{ last }] = await db.select({ last: max(staffMember.position) }).from(staffMember)
+  await db.insert(staffMember).values({ ...values, slug, position: (last ?? 0) + 1 })
   return done('staff', `Aggiunto ${values.nome}.`)
+}
+
+const OrderSchema = z.array(id).min(1)
+
+// Drag and drop in /tabu/admin/staff: the main order (every row) or the Coca page one (leaders)
+export async function saveStaffOrder(kind: 'main' | 'coca', ids: number[]): Promise<ActionResult> {
+  await requireAdmin()
+  const parsed = OrderSchema.safeParse(ids)
+  if (!parsed.success) return fail(parsed.error)
+  const column = kind === 'main' ? 'position' : 'order'
+  await db.transaction(async tx => {
+    for (const [i, rowId] of parsed.data.entries()) {
+      await tx.update(staffMember).set({ [column]: i + 1 }).where(eq(staffMember.id, rowId))
+    }
+  })
+  return done('staff', 'Ordine salvato.')
+}
+
+// The Coca page goes back to the main order
+export async function resetCocaOrder(): Promise<ActionResult> {
+  await requireAdmin()
+  await db.update(staffMember).set({ order: null })
+  return done('staff', 'La pagina Co.Ca. usa di nuovo l’ordine principale.')
 }
 
 export async function deleteStaffMember(_prev: ActionResult, formData: FormData): Promise<ActionResult> {

@@ -29,8 +29,8 @@ export default async function Staff({ staff, coca = false, selector = false }: S
   // the L/C pages' HTML or data).
   const people: StaffPerson[] = (await getStaffMembers())
     .filter(p => (selector || staff === '*' || p.staff?.split('|').includes(staff)) && (!coca || p.coca))
-    // Coca page: capi with an explicit `order` come first (ascending), the others keep the row order
-    // (Array.sort is stable). Other pages: row order.
+    // Coca page: capi with an explicit `order` come first (ascending), the others keep the main order
+    // (Array.sort is stable). Other pages: main order.
     .sort((a, b) => (coca ? orderKey(a) - orderKey(b) : 0))
     .map(p => ({
       name: displayName(p, staff, coca),

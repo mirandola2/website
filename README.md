@@ -285,7 +285,8 @@ Note sui capi (`staff_member`):
 - Se nel campo `ruolo` è presente una `|`, il contenuto antecedente verrà mostrato quando `staff == *`, il contenuto successivo negli altri casi. 
 - Separare i doppi incarichi con un `|` nel campo `staff`. I valori possibili sono gli stessi riportati in precedenza.
 - Il campo `img` è il nome della foto del capo nella cartella `/img/staff` su ImageKit (se il percorso della foto è `/img/staff/capo.jpg`, il campo deve essere `capo.jpg`); le foto caricate dal Tabù salvano invece il percorso completo.
-- Il campo `order` è facoltativo. Se presente, sovrascrive l'ordine delle righe, andando a posizionare i capi secondo l'ordine crescente. Utile solo in caso di doppi servizi.
+- Il campo `position` è l'ordine principale, usato in tutte le pagine dello staff: si cambia trascinando le righe in *Admin → Staff → Cambia l'ordine* (l'import CSV lo prende dall'ordine delle righe).
+- Il campo `order` è facoltativo e vale solo per la pagina Co.Ca.: i capi che lo hanno compaiono prima, in ordine crescente, gli altri seguono l'ordine principale. Si imposta dalla scheda *Pagina Co.Ca.* dello stesso pannello, che può anche riportarlo all'ordine principale.
 - Solo i capi (`coca = 1`) possono avere un'email: il database rifiuta un'email su una riga RS.
 
 Le citazioni (`<Quote type="..." />`) non cambiano mai e sono in `content/quotes.ts`.

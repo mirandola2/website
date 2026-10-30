@@ -1,6 +1,6 @@
 // Imports the CSV collections into the database.
 //
-//   npm run db:import-csv -- staff [content/_capi.csv]   upsert by slug (from `nome`): CSV columns
+//   npm run db:import-csv -- staff [content/_capi.csv]   upsert by slug (from `nome`), CSV order = position: CSV columns
 //                                                        are overwritten, email/isAdmin/imgFileId kept
 //   npm run db:import-csv -- media [content/_media.csv]  replaces every media row (CSV order = sortOrder)
 import fs from 'fs'
@@ -32,7 +32,7 @@ function slugify(text: string) {
 async function importStaff(filePath = 'content/_capi.csv') {
   const rows = readCsv(filePath)
   const seen = new Set<string>()
-  const values = rows.map(r => {
+  const values = rows.map((r, i) => {
     let slug = slugify(r.nome)
     for (let i = 2; seen.has(slug); i++) slug = `${slugify(r.nome)}-${i}`
     seen.add(slug)
@@ -47,6 +47,7 @@ async function importStaff(filePath = 'content/_capi.csv') {
       desc: clean(r.desc),
       img: clean(r.img),
       order: order === null ? null : Number(order),
+      position: i + 1,
     }
   })
 
@@ -66,6 +67,7 @@ async function importStaff(filePath = 'content/_capi.csv') {
           desc: sql`excluded.desc`,
           img: sql`excluded.img`,
           order: sql`excluded."order"`,
+          position: sql`excluded.position`,
         },
       })
   }

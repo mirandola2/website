@@ -24,7 +24,7 @@ export const getTotem = unstable_cache(
 
 export type StaffMember = Awaited<ReturnType<typeof getStaffMembers>>[number]
 
-// Leaders and RS in service, in row order
+// Leaders and RS in service, in the main order
 export const getStaffMembers = unstable_cache(
   () =>
     db
@@ -39,7 +39,7 @@ export const getStaffMembers = unstable_cache(
         order: staffMember.order,
       })
       .from(staffMember)
-      .orderBy(asc(staffMember.id)),
+      .orderBy(asc(staffMember.position), asc(staffMember.id)),
   ['staff'],
   { tags: ['staff'], revalidate: REVALIDATE },
 )

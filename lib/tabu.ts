@@ -8,7 +8,7 @@ import { scoutYearOf } from './scout-year'
 // Tabù reads: not cached (the Tabù is dynamic and only a few dozen leaders use it). Callers must
 // have checked requireLeader() first.
 
-// Leaders who can log in (coca = 1 with an email), in the staff row order
+// Leaders who can log in (coca = 1 with an email), in the staff main order
 const loginLeaders = and(eq(staffMember.coca, true), isNotNull(staffMember.email))
 
 export async function getProject(staffMemberId: number, scoutYear: string) {
@@ -75,7 +75,7 @@ export async function getProjectsForYear(scoutYear: string) {
     .from(staffMember)
     .leftJoin(yearProject, and(eq(yearProject.staffMemberId, staffMember.id), eq(yearProject.scoutYear, scoutYear)))
     .where(loginLeaders)
-    .orderBy(asc(staffMember.id))
+    .orderBy(asc(staffMember.position), asc(staffMember.id))
   return rows.map(({ sections, updatedAt, ...leader }) => ({
     ...leader,
     project: updatedAt ? { sections: normalizeSections(sections), updatedAt } : null,

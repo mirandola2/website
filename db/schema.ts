@@ -22,7 +22,7 @@ export const member = sqliteTable('member', {
   birthday: text().notNull(),
 })
 
-// From content/_capi.csv: leaders (coca = 1) and RS in service (coca = 0), in the CSV row order (id).
+// From content/_capi.csv: leaders (coca = 1) and RS in service (coca = 0), shown in `position` order.
 // Only leaders can have an email, so RS can never log in. The email (lowercase) is the login
 // allowlist and the link to the Better Auth `user` (lib/auth.ts, lib/dal.ts).
 export const staffMember = sqliteTable(
@@ -41,7 +41,9 @@ export const staffMember = sqliteTable(
     img: text(),
     // ImageKit file id, set only by uploads from the site: imported photos are never deleted
     imgFileId: text(),
-    // Coca page: rows with an order come first (ascending), the others keep the row order
+    // Main order on the site (drag and drop in /tabu/admin/staff), ascending
+    position: integer().notNull().default(0),
+    // Optional Coca page override: rows with an order come first (ascending), the others keep `position`
     order: integer(),
     email: text().unique(),
     isAdmin: integer({ mode: 'boolean' }).notNull().default(false),

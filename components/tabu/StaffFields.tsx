@@ -18,7 +18,6 @@ export default function StaffFields({ row }: { row?: Row }) {
         <Field label="Staff" name="staff" defaultValue={row?.staff} required hint="L, C, E, G, N, CF, CC, CJ; doppi servizi: E|CJ" />
         <Field label="Ruolo" name="ruolo" defaultValue={row?.ruolo} hint="Uno per staff, con lo stesso ordine: Capo Reparto|Capo Gruppo" />
         <Field label="Email di accesso" name="email" type="email" defaultValue={row?.email} hint="Solo capi in Co.Ca.: l'account Google con cui entra nel Tabù" />
-        <Field label="Ordine (pagina Co.Ca.)" name="order" type="number" defaultValue={row?.order} />
       </div>
       {showDesc ? (
         <TextArea label="Descrizione (pagine L/C)" name="desc" defaultValue={row?.desc} />
