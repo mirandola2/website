@@ -1,7 +1,7 @@
 'use client'
 
 import { startTransition, useActionState, useEffect, useRef, useState } from 'react'
-import { FloppyDiskIcon, WarningIcon } from '@phosphor-icons/react'
+import { FloppyDiskIcon, PencilSimpleIcon, WarningIcon } from '@phosphor-icons/react'
 import { confirmLeave, isDirty, setDirty, UNSAVED_MESSAGE } from '@/lib/unsaved-changes'
 import type { ActionResult } from './types'
 
@@ -9,18 +9,24 @@ interface ProjectFormProps {
   action: (prev: ActionResult, formData: FormData) => Promise<ActionResult>
   // false for years that are no longer active: every field is disabled
   editable: boolean
+  // A saved project opens locked: "Modifica" unlocks the fields, saving locks them again
+  saved: boolean
   children: React.ReactNode
 }
 
 // The "Il mio progetto" form: tracks unsaved changes and warns before leaving the page, whether
 // by a link, the browser's Back button, a reload or closing the tab.
-export default function ProjectForm({ action, editable, children }: ProjectFormProps) {
+export default function ProjectForm({ action, editable, saved, children }: ProjectFormProps) {
   const [changed, setChanged] = useState(false)
+  const [unlocked, setUnlocked] = useState(!saved)
+  // Bumped by "Annulla": remounts the fields with their saved values
+  const [resetKey, setResetKey] = useState(0)
   const [result, formAction, pending] = useActionState(async (prev: ActionResult, formData: FormData) => {
     const res = await action(prev, formData)
     if (res?.ok) {
       setChanged(false)
       setDirty(false)
+      setUnlocked(false)
     }
     return res
   }, null)
@@ -29,13 +35,20 @@ export default function ProjectForm({ action, editable, children }: ProjectFormP
   const guardPushed = useRef(false)
 
   function markChanged() {
-    if (!editable || changed) return
+    if (!editable || !unlocked || changed) return
     setChanged(true)
     setDirty(true)
     if (!guardPushed.current) {
       history.pushState(history.state, '', location.href)
       guardPushed.current = true
     }
+  }
+
+  function cancel() {
+    if (!confirmLeave()) return
+    setChanged(false)
+    setResetKey(k => k + 1)
+    setUnlocked(false)
   }
 
   useEffect(() => {
@@ -80,6 +93,8 @@ export default function ProjectForm({ action, editable, children }: ProjectFormP
   return (
     <form
       action={formAction}
+      // Locked fields stay readable: full text color instead of daisyUI's faded disabled look
+      className="[&_:is(.input,.textarea):disabled]:text-base-content [&_:is(.input,.textarea):disabled]:cursor-default"
       onInput={markChanged}
       onSubmit={e => {
         e.preventDefault()
@@ -87,15 +102,35 @@ export default function ProjectForm({ action, editable, children }: ProjectFormP
         startTransition(() => formAction(data))
       }}
     >
-      <fieldset disabled={!editable} className="contents">
+      <fieldset key={resetKey} disabled={!editable || !unlocked} className="contents">
         {children}
       </fieldset>
-      {editable && (
+      {editable && !unlocked && (
+        <div className="sticky bottom-0 z-10 mt-4 -mx-4 px-4 py-3 bg-base-100/95 backdrop-blur border-t border-base-300 flex flex-wrap items-center gap-3">
+          <button type="button" className="btn btn-primary" onClick={() => setUnlocked(true)}>
+            <PencilSimpleIcon size={18} weight="bold" aria-hidden />
+            Modifica
+          </button>
+          {result?.ok ? (
+            <span role="status" className="text-sm text-success">
+              {result.message}
+            </span>
+          ) : (
+            <span className="text-sm opacity-70">Il progetto è bloccato per evitare modifiche involontarie.</span>
+          )}
+        </div>
+      )}
+      {editable && unlocked && (
         <div className="sticky bottom-0 z-10 mt-4 -mx-4 px-4 py-3 bg-base-100/95 backdrop-blur border-t border-base-300 flex flex-wrap items-center gap-3">
           <button type="submit" className="btn btn-primary" disabled={pending}>
             {pending ? <span className="loading loading-spinner loading-xs" /> : <FloppyDiskIcon size={18} weight="bold" aria-hidden />}
             Salva progetto
           </button>
+          {saved && (
+            <button type="button" className="btn btn-ghost" onClick={cancel} disabled={pending}>
+              Annulla
+            </button>
+          )}
           {changed && !pending ? (
             <span role="status" className="flex items-center gap-1 text-sm text-warning-content bg-warning/30 rounded-field px-2 py-1">
               <WarningIcon size={16} weight="bold" aria-hidden />

@@ -35,7 +35,7 @@ export default async function MyProjectPage({ searchParams }: { searchParams: Pr
       )}
 
       {/* key: reset the fields when switching year */}
-      <ProjectForm key={year.id} action={saveYearProject} editable={year.active}>
+      <ProjectForm key={year.id} action={saveYearProject} editable={year.active} saved={!!project}>
         <input type="hidden" name="scoutYear" value={year.id} />
         <div className="grid gap-4 lg:grid-cols-2">
           {PROJECT_SECTIONS.map(({ key, title, subtitle }) => {
