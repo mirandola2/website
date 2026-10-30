@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
 import { requireLeader } from '@/lib/dal'
-import { getProject, resolveYear } from '@/lib/tabu'
+import { getProject, NO_YEAR, resolveYear } from '@/lib/tabu'
 import { formatDate } from '@/lib/format'
-import { CHECKPOINTS, MAX_ANSWER, MAX_TEXT, normalizeSections, PROJECT_SECTIONS } from '@/lib/project'
+import { MAX_TEXT, normalizeAnswers } from '@/lib/project'
 import ProjectForm from '@/components/tabu/ProjectForm'
 import ScoreRange from '@/components/tabu/ScoreRange'
 import YearSelect from '@/components/tabu/YearSelect'
@@ -14,8 +14,16 @@ export default async function MyProjectPage({ searchParams }: { searchParams: Pr
   const leader = await requireLeader()
   const { anno } = await searchParams
   const { year, visible } = await resolveYear(anno)
-  const project = await getProject(leader.id, year.id)
-  const sections = project?.sections ?? normalizeSections(null)
+  if (!year) {
+    return (
+      <div className="space-y-6">
+        <h1 className="font-display text-4xl text-primary">Il mio Progetto del Capo</h1>
+        <p>{NO_YEAR}</p>
+      </div>
+    )
+  }
+  const project = await getProject(leader.id, year)
+  const answers = project?.sections ?? normalizeAnswers(year.template, null)
 
   return (
     <div className="space-y-6">
@@ -38,37 +46,32 @@ export default async function MyProjectPage({ searchParams }: { searchParams: Pr
       <ProjectForm key={year.id} action={saveYearProject} editable={year.active} saved={!!project}>
         <input type="hidden" name="scoutYear" value={year.id} />
         <div className="grid gap-4 lg:grid-cols-2">
-          {PROJECT_SECTIONS.map(({ key, title, subtitle }) => {
-            const s = sections[key]
-            return (
-              <section key={key} className="card bg-base-200">
-                <div className="card-body gap-3">
-                  <div>
-                    <h2 className="card-title text-primary">{title}</h2>
-                    <p className="text-sm opacity-70">{subtitle}</p>
-                  </div>
-                  <label className="fieldset">
-                    <span className="fieldset-legend">Obiettivi</span>
-                    <textarea name={`${key}.obiettivi`} defaultValue={s.obiettivi} maxLength={MAX_TEXT} className="textarea w-full min-h-28" />
-                  </label>
-                  <label className="fieldset">
-                    <span className="fieldset-legend">Strumenti</span>
-                    <textarea name={`${key}.strumenti`} defaultValue={s.strumenti} maxLength={MAX_TEXT} className="textarea w-full min-h-28" />
-                  </label>
-                  <label className="fieldset">
-                    <span className="fieldset-legend">{year.question}</span>
-                    <input name={`${key}.risposta`} defaultValue={s.risposta} maxLength={MAX_ANSWER} className="input w-full" />
-                  </label>
-                  <div className="space-y-2">
-                    <p className="fieldset-legend">Verifica</p>
-                    {CHECKPOINTS.map(c => (
-                      <ScoreRange key={c.key} name={`${key}.${c.key}`} label={c.label} defaultValue={s[c.key]} />
-                    ))}
-                  </div>
+          {year.template.areas.map(area => (
+            <section key={area.id} className="card bg-base-200">
+              <div className="card-body gap-3">
+                <div>
+                  <h2 className="card-title text-primary">{area.title}</h2>
+                  {area.subtitle && <p className="text-sm opacity-70">{area.subtitle}</p>}
                 </div>
-              </section>
-            )
-          })}
+                {year.template.questions.map(q => {
+                  // Field names: "<area>.<question>" (read back by saveYearProject)
+                  const name = `${area.id}.${q.id}`
+                  const value = answers[area.id][q.id]
+                  if (q.kind === 'score') return <ScoreRange key={q.id} name={name} label={q.label} defaultValue={Number(value)} />
+                  return (
+                    <label key={q.id} className="fieldset">
+                      <span className="fieldset-legend">{q.label}</span>
+                      {q.kind === 'long' ? (
+                        <textarea name={name} defaultValue={String(value)} maxLength={MAX_TEXT.long} className="textarea w-full min-h-28" />
+                      ) : (
+                        <input name={name} defaultValue={String(value)} maxLength={MAX_TEXT.short} className="input w-full" />
+                      )}
+                    </label>
+                  )
+                })}
+              </div>
+            </section>
+          ))}
         </div>
       </ProjectForm>
     </div>

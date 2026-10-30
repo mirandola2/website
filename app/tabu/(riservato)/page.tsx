@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { ArrowRightIcon, NotebookIcon, UsersThreeIcon } from '@phosphor-icons/react/ssr'
 import { requireLeader } from '@/lib/dal'
-import { getDashboardStats, getProject, resolveYear } from '@/lib/tabu'
+import { getDashboardStats, getProject, NO_YEAR, resolveYear } from '@/lib/tabu'
 import { filledSentence, firstName, formatDate, greeting } from '@/lib/format'
 import StaffAvatar from '@/components/tabu/StaffAvatar'
 import MyMemberCode from '@/components/tabu/MyMemberCode'
@@ -9,8 +9,8 @@ import MyMemberCode from '@/components/tabu/MyMemberCode'
 export default async function Dashboard() {
   const leader = await requireLeader()
   const { year } = await resolveYear(undefined)
-  const [project, stats] = await Promise.all([getProject(leader.id, year.id), getDashboardStats(year.id)])
-  const yearLabel = year.id.replace('-', '/20')
+  const [project, stats] = year ? await Promise.all([getProject(leader.id, year), getDashboardStats(year.id)]) : [null, null]
+  const yearLabel = year?.id.replace('-', '/20')
 
   return (
     <div className="space-y-6">
@@ -26,11 +26,13 @@ export default async function Dashboard() {
               Il mio Progetto del Capo
             </h2>
             <p>
-              {yearLabel}: {project ? `ultima modifica il ${formatDate(project.updatedAt)}.` : 'non ancora iniziato.'}
+              {!year
+                ? NO_YEAR
+                : `${yearLabel}: ${project ? `ultima modifica il ${formatDate(project.updatedAt)}.` : 'non ancora iniziato.'}`}
             </p>
             <div className="card-actions justify-end">
               <Link href="/tabu/progetto/" className="btn btn-primary btn-sm">
-                {!year.active ? 'Apri' : project ? 'Modifica' : 'Inizia'}
+                {!year?.active ? 'Apri' : project ? 'Modifica' : 'Inizia'}
                 <ArrowRightIcon size={16} weight="bold" aria-hidden />
               </Link>
             </div>
@@ -43,8 +45,8 @@ export default async function Dashboard() {
               <UsersThreeIcon size={24} weight="duotone" aria-hidden />
               Tutti i Progetti dei Capi
             </h2>
-            <p>{filledSentence(stats.filled, stats.leaders, yearLabel)}</p>
-            {stats.latest.length > 0 && (
+            <p>{stats ? filledSentence(stats.filled, stats.leaders, yearLabel!) : NO_YEAR}</p>
+            {stats && stats.latest.length > 0 && (
               <ul className="space-y-2">
                 {stats.latest.map(p => (
                   <li key={p.nome} className="flex items-center gap-2 text-sm">

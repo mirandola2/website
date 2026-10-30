@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm'
 import { check, index, integer, sqliteTable, text, unique } from 'drizzle-orm/sqlite-core'
-import type { ProjectSections } from '@/lib/project'
+import type { ProjectAnswers, ProjectTemplate } from '@/lib/project'
 
 // Column names are camelCase here and snake_case in SQL (`casing: 'snake_case'` in lib/db.ts
 // and drizzle.config.ts).
@@ -74,8 +74,9 @@ export const link = sqliteTable('link', {
   sortOrder: integer().notNull().default(0),
 })
 
-// A leader's yearly project: readable by every leader, editable only by its owner. The four
-// areas of the paper template are one JSON value (lib/project.ts; read it with normalizeSections).
+// A leader's yearly project: readable by every leader, editable only by its owner. The answers are
+// one JSON value, by area and question of the year's template (lib/project.ts; read it with
+// normalizeAnswers).
 export const yearProject = sqliteTable(
   'year_project',
   {
@@ -83,20 +84,22 @@ export const yearProject = sqliteTable(
     staffMemberId: integer()
       .notNull()
       .references(() => staffMember.id, { onDelete: 'cascade' }),
-    // '2026-27'
-    scoutYear: text().notNull(),
-    sections: text({ mode: 'json' }).$type<ProjectSections>().notNull().default(sql`'{}'`),
+    // '2026-27': the year's template is in scout_year
+    scoutYear: text()
+      .notNull()
+      .references(() => scoutYear.id),
+    sections: text({ mode: 'json' }).$type<ProjectAnswers>().notNull().default(sql`'{}'`),
     updatedAt: integer({ mode: 'timestamp_ms' }).notNull(),
   },
   t => [unique().on(t.staffMemberId, t.scoutYear)],
 )
 
-// Per scout year settings of the Progetto del Capo (lib/tabu.ts getYearSettings): the variable
-// question of the template, whether the year is listed (visible) and still editable (active)
+// The scout years of the Progetto del Capo, added by admins (lib/tabu.ts getYearSettings): the
+// year's template (areas × questions), whether it is listed (visible) and still editable (active)
 export const scoutYear = sqliteTable('scout_year', {
   // '2026-27'
   id: text().primaryKey(),
-  question: text().notNull(),
+  template: text({ mode: 'json' }).$type<ProjectTemplate>().notNull().default(sql`'{}'`),
   visible: integer({ mode: 'boolean' }).notNull().default(false),
   active: integer({ mode: 'boolean' }).notNull().default(false),
 })

@@ -1,14 +1,15 @@
 'use server'
 
 import { revalidatePath, revalidateTag } from 'next/cache'
-import { and, eq, max, ne, sql } from 'drizzle-orm'
+import { and, count, eq, max, ne, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/lib/db'
 import { requireAdmin } from '@/lib/dal'
 import { deleteStaffPhoto } from '@/lib/imagekit-server'
 import { replaceStaffPhoto } from '@/lib/staff-photo'
-import { link, media, scoutYear, staffMember, totem } from '@/db/schema'
+import { link, media, scoutYear, staffMember, totem, yearProject } from '@/db/schema'
 import { parseScoutYear } from '@/lib/scout-year'
+import { MAX_AREAS, MAX_QUESTIONS, normalizeAnswers, normalizeTemplate, QUESTION_KINDS } from '@/lib/project'
 import type { ActionResult } from '@/components/tabu/types'
 
 // Every action re-checks the admin flag: the pages hiding the forms is not enough.
@@ -254,26 +255,107 @@ export async function deleteTotem(_prev: ActionResult, formData: FormData): Prom
 
 // --- Progetto del Capo: scout years ---
 
+const yearId = z.string().refine(v => parseScoutYear(v) !== null, 'Anno non valido.')
+
 const YearSchema = z.object({
-  id: z.string().refine(v => parseScoutYear(v) !== null, 'Anno non valido.'),
-  question: requiredText(200, 'Domanda'),
+  id: yearId,
   visible: z.literal('on').optional(),
   active: z.literal('on').optional(),
 })
 
-// Per year: the template's variable question, whether it is listed and whether it is still editable
+// Per year: whether it is listed and whether it is still editable
 export async function saveYearSettings(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   await requireAdmin()
   const parsed = YearSchema.safeParse(Object.fromEntries(formData))
   if (!parsed.success) return fail(parsed.error)
-  const { id, question } = parsed.data
   const active = !!parsed.data.active
   // An editable year must be reachable
   const visible = active || !!parsed.data.visible
-  await db
-    .insert(scoutYear)
-    .values({ id, question, visible, active })
-    .onConflictDoUpdate({ target: scoutYear.id, set: { question, visible, active } })
+  const rows = await db.update(scoutYear).set({ visible, active }).where(eq(scoutYear.id, parsed.data.id)).returning()
+  if (!rows.length) return { ok: false, message: 'Anno non trovato.' }
   revalidatePath('/tabu', 'layout')
   return { ok: true, message: 'Salvato.' }
+}
+
+const AddYearSchema = z.object({ id: yearId, copyFrom: z.string() })
+
+// A new year starts hidden, with the template of an existing year (or the paper one)
+export async function addYear(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  await requireAdmin()
+  const parsed = AddYearSchema.safeParse(Object.fromEntries(formData))
+  if (!parsed.success) return fail(parsed.error)
+  const { id, copyFrom } = parsed.data
+  const [source] = await db.select({ template: scoutYear.template }).from(scoutYear).where(eq(scoutYear.id, copyFrom))
+  const [added] = await db
+    .insert(scoutYear)
+    .values({ id, template: normalizeTemplate(source?.template), visible: false, active: false })
+    .onConflictDoNothing()
+    .returning()
+  if (!added) return { ok: false, message: `L’anno ${id} c’è già.` }
+  revalidatePath('/tabu', 'layout')
+  return { ok: true, message: `Aggiunto il ${id}.` }
+}
+
+// Only a year without projects: the projects reference it
+export async function deleteYear(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  await requireAdmin()
+  const id = yearId.parse(formData.get('id'))
+  const [{ n }] = await db.select({ n: count() }).from(yearProject).where(eq(yearProject.scoutYear, id))
+  if (n) return { ok: false, message: 'Questo anno ha dei progetti: non si può eliminare.' }
+  await db.delete(scoutYear).where(eq(scoutYear.id, id))
+  revalidatePath('/tabu', 'layout')
+  return { ok: true, message: `Eliminato il ${id}.` }
+}
+
+const templateId = z.string().regex(/^[a-z0-9-]{1,40}$/, 'Id non valido.')
+const TemplateSchema = z
+  .object({
+    areas: z
+      .array(z.object({ id: templateId, title: requiredText(100, 'Titolo dell’area'), subtitle: z.string().trim().max(300) }))
+      .min(1, 'Serve almeno un’area.')
+      .max(MAX_AREAS, `Al massimo ${MAX_AREAS} aree.`),
+    questions: z
+      .array(
+        z.object({
+          id: templateId,
+          label: requiredText(200, 'Testo della domanda'),
+          kind: z.enum(QUESTION_KINDS.map(k => k.value)),
+        }),
+      )
+      .min(1, 'Serve almeno una domanda.')
+      .max(MAX_QUESTIONS, `Al massimo ${MAX_QUESTIONS} domande.`),
+  })
+  .refine(t => new Set(t.areas.map(a => a.id)).size === t.areas.length, 'Aree duplicate.')
+  .refine(t => new Set(t.questions.map(q => q.id)).size === t.questions.length, 'Domande duplicate.')
+
+// The year's areas and questions. Applies in cascade to the projects already written: answers
+// follow their area and question (also when renamed), those of removed ones are deleted.
+export async function saveYearTemplate(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  await requireAdmin()
+  const id = yearId.parse(formData.get('id'))
+  let json: unknown
+  try {
+    json = JSON.parse(String(formData.get('template')))
+  } catch {
+    return { ok: false, message: 'Modello non valido.' }
+  }
+  const parsed = TemplateSchema.safeParse(json)
+  if (!parsed.success) return fail(parsed.error)
+  const template = parsed.data
+
+  const updated = await db.transaction(async tx => {
+    const rows = await tx.update(scoutYear).set({ template }).where(eq(scoutYear.id, id)).returning()
+    if (!rows.length) return null
+    const projects = await tx.select().from(yearProject).where(eq(yearProject.scoutYear, id))
+    for (const p of projects) {
+      await tx
+        .update(yearProject)
+        .set({ sections: normalizeAnswers(template, p.sections) })
+        .where(eq(yearProject.id, p.id))
+    }
+    return projects.length
+  })
+  if (updated === null) return { ok: false, message: 'Anno non trovato.' }
+  revalidatePath('/tabu', 'layout')
+  return { ok: true, message: updated ? `Modello salvato e applicato a ${updated === 1 ? 'un progetto' : `${updated} progetti`}.` : 'Modello salvato.' }
 }

@@ -259,8 +259,8 @@ I dati che cambiano nel tempo sono in un database SQLite ospitato gratuitamente 
 | `staff_member` | capi (`coca = 1`) e RS in servizio (`coca = 0`) | `<Staff />` |
 | `media` | link alle raccolte di foto e video | `<LnkYearGrid />` |
 | `link` | materiali e link, con categoria e tipo (icona) | `<LinkList />` (pagina `/materiale`) |
-| `year_project` | Progetto del Capo di ogni capo, per anno | Tabù |
-| `scout_year` | anni visibili/attivi e domanda dell'anno del Progetto del Capo | Tabù |
+| `year_project` | Progetto del Capo di ogni capo, per anno: le risposte, per area e domanda del modello dell'anno | Tabù |
+| `scout_year` | anni del Progetto del Capo, aggiunti dagli admin: modello (aree × domande), visibile, attivo | Tabù |
 | `user`, `session`, `account`, `verification` | accessi al Tabù (gestite da Better Auth) | Tabù |
 
 Le letture delle pagine pubbliche sono in `lib/data.ts` e sono in cache: le pagine restano statiche e vengono rigenerate solo quando una modifica chiama `revalidateTag`.
@@ -293,7 +293,7 @@ Le citazioni (`<Quote type="..." />`) non cambiano mai e sono in `content/quotes
 
 ## Tabù 🔒
 
-Il Tabù (`/tabu`, nel menu *Strumenti*) è l'area riservata ai capi: ognuno compila il proprio Progetto del Capo (le quattro aree del modello cartaceo, leggibile da tutti i capi, modificabile solo da chi l'ha scritto), vede il proprio codice socio e cambia la propria foto (e la descrizione, per i capi L/C). In *Admin → Progetti del Capo* si scelgono gli anni visibili, quelli ancora modificabili (attivi) e la domanda dell'anno (es. "Che pozione userai?"). Gli admin gestiscono anche staff (email di accesso comprese), link di foto e video, materiali e link e totem: le modifiche compaiono sul sito pubblico in pochi secondi, senza nuovo deploy.
+Il Tabù (`/tabu`, nel menu *Strumenti*) è l'area riservata ai capi: ognuno compila il proprio Progetto del Capo (leggibile da tutti i capi, modificabile solo da chi l'ha scritto, dopo aver premuto *Modifica* se è già salvato), vede il proprio codice socio e cambia la propria foto (e la descrizione, per i capi L/C). In *Admin → Progetti del Capo* si aggiungono gli anni e si sceglie quali sono visibili e quali ancora modificabili (attivi). Ogni anno ha il suo modello: le aree (le schede del progetto, all'inizio le quattro del modello cartaceo) e le domande, uguali in ogni area, di tipo testo lungo, testo breve o verifica 1–5; un anno nuovo copia il modello di un anno esistente. Il modello si cambia da *Modello → Modifica il modello* e la modifica vale anche per i progetti già compilati: le risposte seguono la propria area e domanda anche se rinominate, quelle delle aree e domande tolte vengono cancellate. Gli admin gestiscono anche staff (email di accesso comprese), link di foto e video, materiali e link e totem: le modifiche compaiono sul sito pubblico in pochi secondi, senza nuovo deploy.
 
 - **Accesso**: con Google ([Better Auth](https://www.better-auth.com), `lib/auth.ts`). Possono entrare solo le email presenti su una riga di `staff_member` con `coca = 1`; gli RS in servizio non possono avere un'email. Il primo admin si crea con `npm run db:set-leader -- <slug> <email> --admin`, poi le email si gestiscono da *Admin → Staff*.
 - **Controlli**: `proxy.ts` rimanda al login chi non ha il cookie di sessione, ma il controllo vero è in `lib/dal.ts` (`requireLeader()` / `requireAdmin()`), chiamato da ogni pagina e ogni server action.

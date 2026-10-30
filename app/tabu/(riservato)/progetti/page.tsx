@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
 import { requireLeader } from '@/lib/dal'
-import { getProjectsForYear, resolveYear } from '@/lib/tabu'
+import { getProjectsForYear, NO_YEAR, resolveYear } from '@/lib/tabu'
 import { filledSentence, firstName, formatDate } from '@/lib/format'
-import { CHECKPOINTS, isSectionEmpty, PROJECT_SECTIONS } from '@/lib/project'
+import { isAreaEmpty } from '@/lib/project'
 import { splitStaff, staffColors, staffLabels } from '@/lib/staff'
 import StaffAvatar from '@/components/tabu/StaffAvatar'
 import ScoreBoxes from '@/components/tabu/ScoreBoxes'
@@ -27,7 +27,15 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
   await requireLeader()
   const { anno } = await searchParams
   const { year, visible } = await resolveYear(anno)
-  const rows = await getProjectsForYear(year.id)
+  if (!year) {
+    return (
+      <div className="space-y-6">
+        <h1 className="font-display text-4xl text-primary">Tutti i Progetti dei Capi</h1>
+        <p>{NO_YEAR}</p>
+      </div>
+    )
+  }
+  const rows = await getProjectsForYear(year)
   // Written projects first (most recent first), then who hasn't written one yet
   const written = rows
     .flatMap(r => (r.project ? [{ ...r, project: r.project }] : []))
@@ -70,35 +78,24 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
               </div>
             </header>
             <div className="grid gap-3 md:grid-cols-2">
-              {PROJECT_SECTIONS.map(({ key, title }) => {
-                const s = project.sections[key]
-                if (isSectionEmpty(s)) return null
+              {year.template.areas.map(area => {
+                const answers = project.sections[area.id]
+                if (isAreaEmpty(answers)) return null
                 return (
-                  <section key={key} className="rounded-box bg-base-200 p-4 space-y-2">
-                    <h3 className="font-bold text-primary">{title}</h3>
-                    {s.obiettivi && (
-                      <div>
-                        <h4 className="text-sm font-bold">Obiettivi</h4>
-                        <p className="whitespace-pre-line">{s.obiettivi}</p>
-                      </div>
-                    )}
-                    {s.strumenti && (
-                      <div>
-                        <h4 className="text-sm font-bold">Strumenti</h4>
-                        <p className="whitespace-pre-line">{s.strumenti}</p>
-                      </div>
-                    )}
-                    {s.risposta && (
-                      <div>
-                        <h4 className="text-sm font-bold">{year.question}</h4>
-                        <p>{s.risposta}</p>
-                      </div>
-                    )}
-                    <div className="space-y-1 pt-1">
-                      {CHECKPOINTS.map(c => (
-                        <ScoreBoxes key={c.key} label={c.label} value={s[c.key]} />
-                      ))}
-                    </div>
+                  <section key={area.id} className="rounded-box bg-base-200 p-4 space-y-2">
+                    <h3 className="font-bold text-primary">{area.title}</h3>
+                    {year.template.questions.map(q => {
+                      const value = answers[q.id]
+                      if (q.kind === 'score') return <ScoreBoxes key={q.id} label={q.label} value={Number(value)} />
+                      return (
+                        value && (
+                          <div key={q.id}>
+                            <h4 className="text-sm font-bold">{q.label}</h4>
+                            <p className="whitespace-pre-line">{value}</p>
+                          </div>
+                        )
+                      )
+                    })}
                   </section>
                 )
               })}
