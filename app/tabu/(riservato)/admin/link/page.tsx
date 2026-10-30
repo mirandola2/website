@@ -7,6 +7,7 @@ import { link } from '@/db/schema'
 import { LINK_TYPES } from '@/lib/links'
 import ActionForm from '@/components/tabu/ActionForm'
 import { Field } from '@/components/tabu/Field'
+import DeleteButton from '@/components/tabu/DeleteButton'
 import LinkTypeIcon from '@/components/mdx/LinkTypeIcon'
 import { deleteLink, saveLink } from '../actions'
 
@@ -16,7 +17,21 @@ type Row = typeof link.$inferSelect
 
 function LinkForm({ row, categories }: { row?: Row; categories: string[] }) {
   return (
-    <ActionForm key={row?.id ?? 'new'} action={saveLink} submitLabel={row ? 'Salva' : 'Aggiungi'}>
+    <ActionForm
+      key={row?.id ?? 'new'}
+      action={saveLink}
+      submitLabel={row ? 'Salva' : 'Aggiungi'}
+      extraActions={
+        row && (
+          <>
+            <Link href="/tabu/admin/link/" className="btn btn-ghost">
+              Annulla
+            </Link>
+            <DeleteButton action={deleteLink} id={row.id} confirm={`Eliminare “${row.name}”?`} redirectTo="/tabu/admin/link/" />
+          </>
+        )
+      }
+    >
       {row && <input type="hidden" name="id" value={row.id} />}
       <div className="grid gap-x-4 md:grid-cols-2">
         <Field label="Nome" name="name" defaultValue={row?.name} required className="md:col-span-2" />
@@ -70,21 +85,6 @@ export default async function AdminLinkPage({ searchParams }: { searchParams: Pr
         <div className="card-body">
           <h2 className="card-title">{editing ? `Modifica: ${editing.name}` : 'Aggiungi un link'}</h2>
           <LinkForm row={editing} categories={categories} />
-          {editing && (
-            <div className="flex flex-wrap gap-2 mt-2">
-              <Link href="/tabu/admin/link/" className="btn btn-ghost btn-sm">
-                Annulla
-              </Link>
-              <ActionForm
-                action={deleteLink}
-                submitLabel="Elimina"
-                buttonClassName="btn btn-error btn-outline btn-sm"
-                confirm={`Eliminare “${editing.name}”?`}
-              >
-                <input type="hidden" name="id" value={editing.id} />
-              </ActionForm>
-            </div>
-          )}
         </div>
       </section>
 

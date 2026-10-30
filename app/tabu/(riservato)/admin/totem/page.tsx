@@ -6,6 +6,7 @@ import { requireAdmin } from '@/lib/dal'
 import { totem } from '@/db/schema'
 import ActionForm from '@/components/tabu/ActionForm'
 import { Field } from '@/components/tabu/Field'
+import DeleteButton from '@/components/tabu/DeleteButton'
 import { deleteTotem, saveTotem } from '../actions'
 
 export const metadata: Metadata = { title: 'Admin · Totem' }
@@ -25,6 +26,7 @@ export default async function AdminTotemPage({ searchParams }: { searchParams: P
     .orderBy(desc(totem.year), asc(totem.location), asc(totem.name))
   const [editing] = id ? await db.select().from(totem).where(eq(totem.id, Number(id))) : []
   const last = rows[0]
+  const backHref = `/tabu/admin/totem/${q ? `?q=${encodeURIComponent(q)}` : ''}`
 
   return (
     <div className="space-y-6">
@@ -33,7 +35,21 @@ export default async function AdminTotemPage({ searchParams }: { searchParams: P
       <section className="card bg-base-200">
         <div className="card-body">
           <h2 className="card-title">{editing ? `Modifica: ${editing.name}` : 'Aggiungi un totem'}</h2>
-          <ActionForm key={editing?.id ?? 'new'} action={saveTotem} submitLabel={editing ? 'Salva' : 'Aggiungi'}>
+          <ActionForm
+            key={editing?.id ?? 'new'}
+            action={saveTotem}
+            submitLabel={editing ? 'Salva' : 'Aggiungi'}
+            extraActions={
+              editing && (
+                <>
+                  <Link href={backHref} className="btn btn-ghost">
+                    Annulla
+                  </Link>
+                  <DeleteButton action={deleteTotem} id={editing.id} confirm={`Eliminare il totem di ${editing.name}?`} redirectTo={backHref} />
+                </>
+              )
+            }
+          >
             {editing && <input type="hidden" name="id" value={editing.id} />}
             <div className="grid gap-x-4 md:grid-cols-2">
               <Field label="Nome e cognome" name="name" defaultValue={editing?.name} required />
@@ -43,21 +59,6 @@ export default async function AdminTotemPage({ searchParams }: { searchParams: P
               <Field label="Anno" name="year" defaultValue={editing?.year ?? last?.year} required />
             </div>
           </ActionForm>
-          {editing && (
-            <div className="flex flex-wrap gap-2 mt-2">
-              <Link href={`/tabu/admin/totem/${q ? `?q=${encodeURIComponent(q)}` : ''}`} className="btn btn-ghost btn-sm">
-                Annulla
-              </Link>
-              <ActionForm
-                action={deleteTotem}
-                submitLabel="Elimina"
-                buttonClassName="btn btn-error btn-outline btn-sm"
-                confirm={`Eliminare il totem di ${editing.name}?`}
-              >
-                <input type="hidden" name="id" value={editing.id} />
-              </ActionForm>
-            </div>
-          )}
         </div>
       </section>
 

@@ -12,6 +12,11 @@ export default function StaffFields({ row }: { row?: Row }) {
   return (
     <>
       {row && <input type="hidden" name="id" value={row.id} />}
+      {/* Access flags first and highlighted: they decide who can enter the Tabù and manage it */}
+      <div className="flex flex-wrap gap-x-6 gap-y-1 rounded-box border border-base-300 bg-base-100 px-4 py-2 mb-2 font-bold">
+        <Checkbox label="In Co.Ca. (capo)" name="coca" defaultChecked={row ? row.coca : true} />
+        <Checkbox label="Admin" name="isAdmin" defaultChecked={row?.isAdmin} />
+      </div>
       <div className="grid gap-x-4 md:grid-cols-2">
         <Field label="Nome e cognome" name="nome" defaultValue={row?.nome} required />
         <Field label="Nome di caccia (L/C)" name="nomeCaccia" defaultValue={row?.nomeCaccia} />
@@ -24,10 +29,6 @@ export default function StaffFields({ row }: { row?: Row }) {
       ) : (
         <input type="hidden" name="desc" value={row?.desc ?? ''} />
       )}
-      <div className="flex flex-wrap gap-4">
-        <Checkbox label="In Co.Ca. (capo)" name="coca" defaultChecked={row ? row.coca : true} />
-        <Checkbox label="Admin" name="isAdmin" defaultChecked={row?.isAdmin} />
-      </div>
     </>
   )
 }

@@ -7,6 +7,7 @@ import { requireAdmin } from '@/lib/dal'
 import { media } from '@/db/schema'
 import ActionForm from '@/components/tabu/ActionForm'
 import { Field } from '@/components/tabu/Field'
+import DeleteButton from '@/components/tabu/DeleteButton'
 import { deleteMedia, replaceMediaUrls, saveMedia } from '../actions'
 
 export const metadata: Metadata = { title: 'Admin · Foto e video' }
@@ -24,7 +25,21 @@ function hostOf(url: string) {
 
 function MediaForm({ row }: { row?: Row }) {
   return (
-    <ActionForm key={row?.id ?? 'new'} action={saveMedia} submitLabel={row ? 'Salva' : 'Aggiungi'}>
+    <ActionForm
+      key={row?.id ?? 'new'}
+      action={saveMedia}
+      submitLabel={row ? 'Salva' : 'Aggiungi'}
+      extraActions={
+        row && (
+          <>
+            <Link href="/tabu/admin/media/" className="btn btn-ghost">
+              Annulla
+            </Link>
+            <DeleteButton action={deleteMedia} id={row.id} confirm={`Eliminare “${row.name}”?`} redirectTo="/tabu/admin/media/" />
+          </>
+        )
+      }
+    >
       {row && <input type="hidden" name="id" value={row.id} />}
       <div className="grid gap-x-4 md:grid-cols-2">
         <Field label="Nome" name="name" defaultValue={row?.name} required className="md:col-span-2" />
@@ -58,21 +73,6 @@ export default async function AdminMediaPage({ searchParams }: { searchParams: P
         <div className="card-body">
           <h2 className="card-title">{editing ? `Modifica: ${editing.name}` : 'Aggiungi un link'}</h2>
           <MediaForm row={editing} />
-          {editing && (
-            <div className="flex flex-wrap gap-2 mt-2">
-              <Link href="/tabu/admin/media/" className="btn btn-ghost btn-sm">
-                Annulla
-              </Link>
-              <ActionForm
-                action={deleteMedia}
-                submitLabel="Elimina"
-                buttonClassName="btn btn-error btn-outline btn-sm"
-                confirm={`Eliminare “${editing.name}”?`}
-              >
-                <input type="hidden" name="id" value={editing.id} />
-              </ActionForm>
-            </div>
-          )}
         </div>
       </section>
 

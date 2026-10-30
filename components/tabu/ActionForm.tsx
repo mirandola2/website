@@ -11,6 +11,8 @@ interface ActionFormProps {
   confirm?: string
   className?: string
   buttonClassName?: string
+  // More buttons on the same row, after the submit one (Annulla, <DeleteButton>)
+  extraActions?: React.ReactNode
 }
 
 // A form bound to a server action, with a pending state and the action's message
@@ -21,6 +23,7 @@ export default function ActionForm({
   confirm,
   className = '',
   buttonClassName = 'btn btn-primary',
+  extraActions,
 }: ActionFormProps) {
   const [result, formAction, pending] = useActionState(action, null)
 
@@ -43,6 +46,7 @@ export default function ActionForm({
           {pending && <span className="loading loading-spinner loading-xs" />}
           {submitLabel}
         </button>
+        {extraActions}
         {result && !pending && (
           <span role="status" className={`text-sm ${result.ok ? 'text-success' : 'text-error'}`}>
             {result.message}
