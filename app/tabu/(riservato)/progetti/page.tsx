@@ -2,10 +2,9 @@ import type { Metadata } from 'next'
 import { requireLeader } from '@/lib/dal'
 import { getProjectsForYear, NO_YEAR, resolveYear } from '@/lib/tabu'
 import { filledSentence, firstName, formatDate } from '@/lib/format'
-import { isAreaEmpty } from '@/lib/project'
 import { splitStaff, staffColors, staffLabels } from '@/lib/staff'
 import StaffAvatar from '@/components/tabu/StaffAvatar'
-import ScoreBoxes from '@/components/tabu/ScoreBoxes'
+import ProjectView from '@/components/tabu/ProjectView'
 import ProjectDialog from '@/components/tabu/ProjectDialog'
 import YearSelect from '@/components/tabu/YearSelect'
 
@@ -77,29 +76,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
                 </p>
               </div>
             </header>
-            <div className="grid gap-3 md:grid-cols-2">
-              {year.template.areas.map(area => {
-                const answers = project.sections[area.id]
-                if (isAreaEmpty(answers)) return null
-                return (
-                  <section key={area.id} className="rounded-box bg-base-200 p-4 space-y-2">
-                    <h3 className="font-bold text-primary">{area.title}</h3>
-                    {year.template.questions.map(q => {
-                      const value = answers[q.id]
-                      if (q.kind === 'score') return <ScoreBoxes key={q.id} label={q.label} value={Number(value)} />
-                      return (
-                        value && (
-                          <div key={q.id}>
-                            <h4 className="text-sm font-bold">{q.label}</h4>
-                            <p className="whitespace-pre-line">{value}</p>
-                          </div>
-                        )
-                      )
-                    })}
-                  </section>
-                )
-              })}
-            </div>
+            <ProjectView template={year.template} answers={project.sections} />
           </ProjectDialog>
         ))}
       </div>

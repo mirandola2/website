@@ -4,6 +4,7 @@ import { getProject, NO_YEAR, resolveYear } from '@/lib/tabu'
 import { formatDate } from '@/lib/format'
 import { MAX_TEXT, normalizeAnswers } from '@/lib/project'
 import ProjectForm from '@/components/tabu/ProjectForm'
+import ProjectView from '@/components/tabu/ProjectView'
 import ScoreRange from '@/components/tabu/ScoreRange'
 import YearSelect from '@/components/tabu/YearSelect'
 import { saveYearProject } from './actions'
@@ -43,7 +44,13 @@ export default async function MyProjectPage({ searchParams }: { searchParams: Pr
       )}
 
       {/* key: reset the fields when switching year */}
-      <ProjectForm key={year.id} action={saveYearProject} editable={year.active} saved={!!project}>
+      <ProjectForm
+        key={year.id}
+        action={saveYearProject}
+        editable={year.active}
+        saved={!!project}
+        view={<ProjectView template={year.template} answers={answers} detailed />}
+      >
         <input type="hidden" name="scoutYear" value={year.id} />
         <div className="grid gap-4 lg:grid-cols-2">
           {year.template.areas.map(area => (
