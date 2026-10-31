@@ -1,13 +1,15 @@
 'use server'
 
 import { revalidatePath, revalidateTag } from 'next/cache'
-import { and, count, eq, max, ne, sql } from 'drizzle-orm'
+import { and, count, eq, isNull, max, ne, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/lib/db'
 import { requireAdmin } from '@/lib/dal'
-import { deleteStaffPhoto } from '@/lib/imagekit-server'
+import { slugify } from '@/lib/format'
 import { replaceStaffPhoto } from '@/lib/staff-photo'
-import { link, media, scoutYear, staffMember, totem, yearProject } from '@/db/schema'
+import { optionalText } from '@/lib/validation'
+import { parseMembersCsv } from '@/lib/members-csv'
+import { link, media, member, scoutYear, staffMember, totem, yearProject } from '@/db/schema'
 import { parseScoutYear } from '@/lib/scout-year'
 import { MAX_AREAS, MAX_QUESTIONS, normalizeAnswers, normalizeTemplate, QUESTION_KINDS } from '@/lib/project'
 import type { ActionResult } from '@/components/tabu/types'
@@ -21,25 +23,17 @@ function done(tag: 'staff' | 'media' | 'links' | 'totem', message: string): Acti
 }
 
 const fail = (error: z.ZodError): ActionResult => ({ ok: false, message: error.issues[0].message })
+const notFound: ActionResult = { ok: false, message: 'Riga non trovata.' }
 
-const optionalText = (max: number) =>
-  z
-    .string()
-    .trim()
-    .max(max, `Massimo ${max} caratteri.`)
-    .transform(v => v.replace(/\r\n?/g, '\n') || null)
 const requiredText = (max: number, label: string) => z.string().trim().min(1, `${label} obbligatorio.`).max(max)
 const id = z.coerce.number().int().positive()
 // Rendered as public links: only http(s) to a real domain (no javascript:, data:, ...)
 const webUrl = z.url({ protocol: /^https?$/, hostname: z.regexes.domain, error: 'Link non valido: deve iniziare con https://.' }).max(2000)
 
-function slugify(text: string) {
-  return text
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
+// The row id of a form: a malformed one gives null (then "Riga non trovata."), never an exception
+function formId(formData: FormData) {
+  const parsed = id.safeParse(formData.get('id'))
+  return parsed.success ? parsed.data : null
 }
 
 // --- Staff ---
@@ -87,8 +81,12 @@ export async function saveStaffMember(_prev: ActionResult, formData: FormData): 
   }
 
   if (rowId) {
-    await db.update(staffMember).set(values).where(eq(staffMember.id, rowId))
-    return done('staff', 'Salvato.')
+    const rows = await db
+      .update(staffMember)
+      .set(values)
+      .where(and(eq(staffMember.id, rowId), isNull(staffMember.deletedAt)))
+      .returning({ id: staffMember.id })
+    return rows.length ? done('staff', 'Salvato.') : notFound
   }
   let slug = slugify(values.nome)
   const base = slug
@@ -124,22 +122,63 @@ export async function resetCocaOrder(): Promise<ActionResult> {
   return done('staff', 'La pagina Co.Ca. usa di nuovo l’ordine principale.')
 }
 
+// Never a real delete: the row keeps its Progetti del Capo (and the database refuses to delete a
+// row that has any). It disappears from the site and the Tabù, and can't log in any more.
 export async function deleteStaffMember(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   const admin = await requireAdmin()
-  const rowId = id.parse(formData.get('id'))
+  const rowId = formId(formData)
   if (rowId === admin.id) return { ok: false, message: 'Non puoi eliminare te stesso.' }
-  const [row] = await db.delete(staffMember).where(eq(staffMember.id, rowId)).returning()
-  if (!row) return { ok: false, message: 'Riga non trovata.' }
-  await deleteStaffPhoto(row.imgFileId)
-  return done('staff', `Eliminato ${row.nome}.`)
+  const [row] = rowId
+    ? await db
+        .update(staffMember)
+        .set({ deletedAt: new Date(), email: null, isAdmin: false, order: null })
+        .where(and(eq(staffMember.id, rowId), isNull(staffMember.deletedAt)))
+        .returning({ nome: staffMember.nome })
+    : []
+  return row ? done('staff', `Eliminato ${row.nome}. I suoi progetti restano.`) : notFound
 }
 
 // Any row's photo, RS included
 export async function uploadStaffPhotoAdmin(formData: FormData): Promise<ActionResult> {
   await requireAdmin()
-  const [row] = await db.select().from(staffMember).where(eq(staffMember.id, id.parse(formData.get('id'))))
-  if (!row) return { ok: false, message: 'Riga non trovata.' }
-  return replaceStaffPhoto(row, formData.get('photo'))
+  const rowId = formId(formData)
+  const [row] = rowId
+    ? await db
+        .select()
+        .from(staffMember)
+        .where(and(eq(staffMember.id, rowId), isNull(staffMember.deletedAt)))
+    : []
+  return row ? replaceStaffPhoto(row, formData.get('photo')) : notFound
+}
+
+// --- Media, materials and links, totem: the same add / edit / delete on three tables ---
+
+const crudTables = { media, links: link, totem }
+type CrudTag = keyof typeof crudTables
+
+// Each schema matches its own table; the three share an integer `id` and a `name`
+async function saveRow<T extends { id?: string; name: string }>(tag: CrudTag, schema: z.ZodType<T>, formData: FormData) {
+  const parsed = schema.safeParse(Object.fromEntries(formData))
+  if (!parsed.success) return fail(parsed.error)
+  const { id: rawId, ...values } = parsed.data
+  const table = crudTables[tag] as typeof media
+  if (rawId) {
+    const rows = await db
+      .update(table)
+      .set(values as Partial<typeof media.$inferInsert>)
+      .where(eq(table.id, Number(rawId)))
+      .returning({ id: table.id })
+    return rows.length ? done(tag, 'Salvato.') : notFound
+  }
+  await db.insert(table).values(values as unknown as typeof media.$inferInsert)
+  return done(tag, `Aggiunto “${values.name}”.`)
+}
+
+async function deleteRow(tag: CrudTag, formData: FormData) {
+  const table = crudTables[tag] as typeof media
+  const rowId = formId(formData)
+  const [row] = rowId ? await db.delete(table).where(eq(table.id, rowId)).returning({ name: table.name }) : []
+  return row ? done(tag, `Eliminato “${row.name}”.`) : notFound
 }
 
 // --- Media ---
@@ -160,21 +199,12 @@ const MediaSchema = z.object({
 
 export async function saveMedia(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   await requireAdmin()
-  const parsed = MediaSchema.safeParse(Object.fromEntries(formData))
-  if (!parsed.success) return fail(parsed.error)
-  const { id: rawId, ...values } = parsed.data
-  if (rawId) {
-    await db.update(media).set(values).where(eq(media.id, Number(rawId)))
-    return done('media', 'Salvato.')
-  }
-  await db.insert(media).values(values)
-  return done('media', `Aggiunto “${values.name}”.`)
+  return saveRow('media', MediaSchema, formData)
 }
 
 export async function deleteMedia(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   await requireAdmin()
-  const [row] = await db.delete(media).where(eq(media.id, id.parse(formData.get('id')))).returning()
-  return row ? done('media', `Eliminato “${row.name}”.`) : { ok: false, message: 'Riga non trovata.' }
+  return deleteRow('media', formData)
 }
 
 const ReplaceSchema = z.object({
@@ -212,21 +242,12 @@ const LinkSchema = z.object({
 
 export async function saveLink(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   await requireAdmin()
-  const parsed = LinkSchema.safeParse(Object.fromEntries(formData))
-  if (!parsed.success) return fail(parsed.error)
-  const { id: rawId, ...values } = parsed.data
-  if (rawId) {
-    await db.update(link).set(values).where(eq(link.id, Number(rawId)))
-    return done('links', 'Salvato.')
-  }
-  await db.insert(link).values(values)
-  return done('links', `Aggiunto “${values.name}”.`)
+  return saveRow('links', LinkSchema, formData)
 }
 
 export async function deleteLink(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   await requireAdmin()
-  const [row] = await db.delete(link).where(eq(link.id, id.parse(formData.get('id')))).returning()
-  return row ? done('links', `Eliminato “${row.name}”.`) : { ok: false, message: 'Riga non trovata.' }
+  return deleteRow('links', formData)
 }
 
 // --- Totem ---
@@ -241,21 +262,12 @@ const TotemSchema = z.object({
 
 export async function saveTotem(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   await requireAdmin()
-  const parsed = TotemSchema.safeParse(Object.fromEntries(formData))
-  if (!parsed.success) return fail(parsed.error)
-  const { id: rawId, ...values } = parsed.data
-  if (rawId) {
-    await db.update(totem).set(values).where(eq(totem.id, Number(rawId)))
-    return done('totem', 'Salvato.')
-  }
-  await db.insert(totem).values(values)
-  return done('totem', `Aggiunto ${values.name}.`)
+  return saveRow('totem', TotemSchema, formData)
 }
 
 export async function deleteTotem(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   await requireAdmin()
-  const [row] = await db.delete(totem).where(eq(totem.id, id.parse(formData.get('id')))).returning()
-  return row ? done('totem', `Eliminato ${row.name}.`) : { ok: false, message: 'Riga non trovata.' }
+  return deleteRow('totem', formData)
 }
 
 // --- Progetto del Capo: scout years ---
@@ -304,7 +316,9 @@ export async function addYear(_prev: ActionResult, formData: FormData): Promise<
 // Only a year without projects: the projects reference it
 export async function deleteYear(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   await requireAdmin()
-  const id = yearId.parse(formData.get('id'))
+  const parsed = yearId.safeParse(formData.get('id'))
+  if (!parsed.success) return fail(parsed.error)
+  const id = parsed.data
   const [{ n }] = await db.select({ n: count() }).from(yearProject).where(eq(yearProject.scoutYear, id))
   if (n) return { ok: false, message: 'Questo anno ha dei progetti: non si può eliminare.' }
   await db.delete(scoutYear).where(eq(scoutYear.id, id))
@@ -337,7 +351,9 @@ const TemplateSchema = z
 // follow their area and question (also when renamed), those of removed ones are deleted.
 export async function saveYearTemplate(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   await requireAdmin()
-  const id = yearId.parse(formData.get('id'))
+  const parsedId = yearId.safeParse(formData.get('id'))
+  if (!parsedId.success) return fail(parsedId.error)
+  const id = parsedId.data
   let json: unknown
   try {
     json = JSON.parse(String(formData.get('template')))
@@ -363,4 +379,48 @@ export async function saveYearTemplate(_prev: ActionResult, formData: FormData):
   if (updated === null) return { ok: false, message: 'Anno non trovato.' }
   revalidatePath('/tabu', 'layout')
   return { ok: true, message: updated ? `Modello salvato e applicato a ${updated === 1 ? 'un progetto' : `${updated} progetti`}.` : 'Modello salvato.' }
+}
+
+// --- Member codes and birthdays (Codice socio search, birthdays on the home page) ---
+
+const MAX_CSV_BYTES = 1024 * 1024
+
+// Adds or updates every row of the CSV by member code; with "replace", whoever is not in the file is
+// deleted. One bad row and nothing is saved.
+export async function importMembers(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  await requireAdmin()
+  const file = formData.get('file')
+  if (!(file instanceof File) || file.size === 0) return { ok: false, message: 'Scegli un file CSV.' }
+  if (file.size > MAX_CSV_BYTES) return { ok: false, message: 'Il file supera 1 MB.' }
+  const parsed = parseMembersCsv(await file.text())
+  if (!parsed.ok) return { ok: false, message: parsed.errors.join(' ') }
+  const replace = formData.get('replace') === 'on'
+
+  const [{ before }] = await db.select({ before: count() }).from(member)
+  await db.transaction(async tx => {
+    if (replace) await tx.delete(member)
+    // 3 values per row: well under SQLite's limit of variables per statement
+    for (let i = 0; i < parsed.rows.length; i += 200) {
+      await tx
+        .insert(member)
+        .values(parsed.rows.slice(i, i + 200))
+        .onConflictDoUpdate({
+          target: member.memberCode,
+          set: { fullName: sql`excluded.full_name`, birthday: sql`excluded.birthday` },
+        })
+    }
+  })
+  const [{ after }] = await db.select({ after: count() }).from(member)
+
+  // The birthdays route is cached for an hour
+  revalidatePath('/api/birthdays')
+  revalidatePath('/tabu', 'layout')
+  const rows = parsed.rows.length
+  const added = after - before
+  return {
+    ok: true,
+    message: replace
+      ? `Elenco sostituito: ${after} soci.`
+      : `${rows === 1 ? 'Importata 1 riga' : `Importate ${rows} righe`}: ${added === 1 ? '1 socio nuovo' : `${added} soci nuovi`}, ${after} in totale.`,
+  }
 }

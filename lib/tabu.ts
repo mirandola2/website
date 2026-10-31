@@ -1,15 +1,15 @@
 import 'server-only'
-import { and, asc, count, desc, eq, isNotNull, sql } from 'drizzle-orm'
+import { and, asc, count, desc, eq, isNotNull, isNull, or, sql } from 'drizzle-orm'
 import { db } from './db'
-import { link, media, scoutYear as scoutYearTable, staffMember, totem, yearProject } from '@/db/schema'
+import { link, media, member, scoutYear as scoutYearTable, staffMember, totem, yearProject } from '@/db/schema'
 import { normalizeAnswers, normalizeTemplate, type ProjectTemplate } from './project'
 import { scoutYearOf } from './scout-year'
 
 // Tabù reads: not cached (the Tabù is dynamic and only a few dozen leaders use it). Callers must
 // have checked requireLeader() first.
 
-// Leaders who can log in (coca = 1 with an email), in the staff main order
-const loginLeaders = and(eq(staffMember.coca, true), isNotNull(staffMember.email))
+// Leaders who can log in (coca = 1 with an email, not removed), in the staff main order
+const loginLeaders = and(eq(staffMember.coca, true), isNotNull(staffMember.email), isNull(staffMember.deletedAt))
 
 export const NO_YEAR = 'Nessun anno aperto per i Progetti del Capo: chiedi a un admin.'
 
@@ -50,7 +50,8 @@ export async function getProject(staffMemberId: number, year: YearSetting) {
   return project ? { ...project, sections: normalizeAnswers(year.template, project.sections) } : null
 }
 
-// Every leader with their project for the year (null when not written yet)
+// Every leader with their project for the year (null when not written yet), plus the projects of
+// whoever has since left the staff or lost their login: a written project is always listed
 export async function getProjectsForYear(year: YearSetting) {
   const rows = await db
     .select({
@@ -63,7 +64,7 @@ export async function getProjectsForYear(year: YearSetting) {
     })
     .from(staffMember)
     .leftJoin(yearProject, and(eq(yearProject.staffMemberId, staffMember.id), eq(yearProject.scoutYear, year.id)))
-    .where(loginLeaders)
+    .where(or(loginLeaders, isNotNull(yearProject.id)))
     .orderBy(asc(staffMember.position), asc(staffMember.id))
   return rows.map(({ sections, updatedAt, ...leader }) => ({
     ...leader,
@@ -80,7 +81,12 @@ export async function countProjectsByYear() {
 export async function getDashboardStats(scoutYear: string) {
   const [[leaders], [filled], latest] = await Promise.all([
     db.select({ n: count() }).from(staffMember).where(loginLeaders),
-    db.select({ n: count() }).from(yearProject).where(eq(yearProject.scoutYear, scoutYear)),
+    // Out of the current leaders, like the total
+    db
+      .select({ n: count() })
+      .from(yearProject)
+      .innerJoin(staffMember, eq(staffMember.id, yearProject.staffMemberId))
+      .where(and(eq(yearProject.scoutYear, scoutYear), loginLeaders)),
     db
       .select({ nome: staffMember.nome, img: staffMember.img, updatedAt: yearProject.updatedAt })
       .from(yearProject)
@@ -93,13 +99,15 @@ export async function getDashboardStats(scoutYear: string) {
 }
 
 export async function getAdminCounts() {
-  const [[staff], [mediaRows], [linkRows], [totemRows]] = await Promise.all([
+  const [[staff], [mediaRows], [linkRows], [totemRows], [memberRows]] = await Promise.all([
     db
       .select({ n: count(), leaders: sql<number>`sum(${staffMember.email} IS NOT NULL)` })
-      .from(staffMember),
+      .from(staffMember)
+      .where(isNull(staffMember.deletedAt)),
     db.select({ n: count() }).from(media),
     db.select({ n: count() }).from(link),
     db.select({ n: count() }).from(totem),
+    db.select({ n: count() }).from(member),
   ])
-  return { staff: staff.n, withEmail: staff.leaders ?? 0, media: mediaRows.n, links: linkRows.n, totem: totemRows.n }
+  return { staff: staff.n, withEmail: staff.leaders ?? 0, media: mediaRows.n, links: linkRows.n, totem: totemRows.n, members: memberRows.n }
 }

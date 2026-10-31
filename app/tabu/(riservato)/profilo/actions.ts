@@ -7,6 +7,7 @@ import { db } from '@/lib/db'
 import { requireLeader } from '@/lib/dal'
 import { replaceStaffPhoto } from '@/lib/staff-photo'
 import { isLcStaff } from '@/lib/staff'
+import { optionalText } from '@/lib/validation'
 import { staffMember } from '@/db/schema'
 import type { ActionResult } from '@/components/tabu/types'
 
@@ -17,13 +18,7 @@ export async function uploadMyPhoto(formData: FormData): Promise<ActionResult> {
   return replaceStaffPhoto(leader, formData.get('photo'))
 }
 
-const DescSchema = z.object({
-  desc: z
-    .string()
-    .trim()
-    .max(600, 'Massimo 600 caratteri.')
-    .transform(v => v.replace(/\r\n?/g, '\n')),
-})
+const DescSchema = z.object({ desc: optionalText(600) })
 
 export async function updateMyDesc(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   const leader = await requireLeader()
@@ -32,7 +27,7 @@ export async function updateMyDesc(_prev: ActionResult, formData: FormData): Pro
   const parsed = DescSchema.safeParse({ desc: formData.get('desc') ?? '' })
   if (!parsed.success) return { ok: false, message: parsed.error.issues[0].message }
 
-  await db.update(staffMember).set({ desc: parsed.data.desc || null }).where(eq(staffMember.id, leader.id))
+  await db.update(staffMember).set({ desc: parsed.data.desc }).where(eq(staffMember.id, leader.id))
   revalidateTag('staff', 'max')
   revalidatePath('/tabu', 'layout')
   return { ok: true, message: 'Descrizione salvata.' }

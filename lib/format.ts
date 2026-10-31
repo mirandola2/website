@@ -15,3 +15,17 @@ export function greeting(now = new Date()) {
   if (hour >= 18 && hour < 22) return 'Buona sera'
   return 'Buona notte'
 }
+
+// "Obiettivi 2024-25" -> "obiettivi-2024-25", "Città & Paese" -> "citta-paese". Staff slugs (admin
+// and scripts/import-csv.mts) and heading ids (TableOfContents) must match, so there is one copy.
+export function slugify(text: string) {
+  return text
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
+// Full names as stored in member.full_name: trimmed, single spaces
+export const normalizeName = (name: string) => name.trim().replace(/\s+/g, ' ')

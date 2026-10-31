@@ -2,13 +2,10 @@
 
 import { useState, useRef, useSyncExternalStore } from 'react'
 import { useCookie } from '@/hooks/useCookie'
+import { normalizeName } from '@/lib/format'
 import { clearMemberToken, saveMemberToken, searchMemberCode as searchMemberCodeAction } from '@/app/actions/member'
 import { authClient } from '@/lib/auth-client'
 import { MagnifyingGlassIcon, SignOutIcon, FloppyDiskIcon, UserCheckIcon } from '@phosphor-icons/react'
-
-interface CodiceSocioProps {
-  lastupdate?: string
-}
 
 interface PersonData {
   name?: string
@@ -24,7 +21,7 @@ function subscribe(listener: () => void) {
 }
 const notify = () => listeners.forEach(l => l())
 
-export default function CodiceSocio({ lastupdate }: CodiceSocioProps) {
+export default function CodiceSocio() {
   // The token itself is in an HttpOnly cookie set by the server: this one only says it exists
   const hintCookie = useCookie('psk_set')
   const hasToken = useSyncExternalStore(subscribe, () => hintCookie.get() === '1', () => false)
@@ -68,7 +65,7 @@ export default function CodiceSocio({ lastupdate }: CodiceSocioProps) {
   }
 
   async function searchMemberCode() {
-    const cleaned = name.trim().replace(/\s+/g, ' ')
+    const cleaned = normalizeName(name)
     if (!cleaned || loading) return
 
     setLoading(true)
@@ -141,7 +138,6 @@ export default function CodiceSocio({ lastupdate }: CodiceSocioProps) {
             </button>
           </form>
 
-          {lastupdate && <p className="text-sm text-right opacity-70">Dati aggiornati al {lastupdate}</p>}
         </div>
       </div>
 

@@ -3,18 +3,19 @@ import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { APIError } from 'better-auth/api'
 import { nextCookies } from 'better-auth/next-js'
-import { and, eq } from 'drizzle-orm'
+import { and, eq, isNull } from 'drizzle-orm'
 import { db } from './db'
 import * as schema from '@/db/schema'
 
-// Login allowlist: only the email of a leader row (coca = 1) can sign up or open a session.
-// RS rows can't have an email (CHECK in db/schema.ts), so they can never log in.
-export async function isLeaderEmail(email: string) {
+// Login allowlist: only the email of a leader row (coca = 1, not removed) can sign up or open a
+// session. RS rows can't have an email (CHECK in db/schema.ts), so they can never log in.
+export async function findLeaderByEmail(email: string) {
+  const { staffMember } = schema
   const [row] = await db
-    .select({ id: schema.staffMember.id })
-    .from(schema.staffMember)
-    .where(and(eq(schema.staffMember.email, email.toLowerCase()), eq(schema.staffMember.coca, true)))
-  return !!row
+    .select()
+    .from(staffMember)
+    .where(and(eq(staffMember.email, email.toLowerCase()), eq(staffMember.coca, true), isNull(staffMember.deletedAt)))
+  return row ?? null
 }
 
 // The OAuth callback turns this into a redirect to /tabu/login/?error=not_a_leader
@@ -38,7 +39,7 @@ export const auth = betterAuth({
     user: {
       create: {
         before: async user => {
-          if (!(await isLeaderEmail(user.email))) throw notALeader()
+          if (!(await findLeaderByEmail(user.email))) throw notALeader()
         },
       },
     },
@@ -50,7 +51,7 @@ export const auth = betterAuth({
             .select({ email: schema.user.email })
             .from(schema.user)
             .where(eq(schema.user.id, session.userId))
-          if (!row || !(await isLeaderEmail(row.email))) throw notALeader()
+          if (!row || !(await findLeaderByEmail(row.email))) throw notALeader()
         },
       },
     },

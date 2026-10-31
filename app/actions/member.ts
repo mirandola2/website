@@ -2,10 +2,9 @@
 
 import { createHash, timingSafeEqual } from 'crypto'
 import { cookies, headers } from 'next/headers'
-import { sql } from 'drizzle-orm'
-import { db } from '@/lib/db'
-import { member } from '@/db/schema'
 import { getLeader } from '@/lib/dal'
+import { findMembersByName } from '@/lib/data'
+import { normalizeName } from '@/lib/format'
 import { hitRateLimit } from '@/lib/rate-limit'
 
 export type MemberCodeResult =
@@ -59,12 +58,7 @@ export async function searchMemberCode(name: string): Promise<MemberCodeResult> 
     if (!(await hitRateLimit(`member-search:${await clientIp()}`, 20, 3600_000))) return { ok: false, error: 'rate_limited' }
   }
 
-  const cleaned = typeof name === 'string' ? name.trim().replace(/\s+/g, ' ') : ''
+  const cleaned = typeof name === 'string' ? normalizeName(name) : ''
   if (!cleaned || cleaned.length > 100) return { ok: false, error: 'invalid' }
-
-  const people = await db
-    .select({ name: member.fullName, code: member.memberCode, birthday: member.birthday })
-    .from(member)
-    .where(sql`lower(${member.fullName}) = lower(${cleaned})`)
-  return { ok: true, people }
+  return { ok: true, people: await findMembersByName(cleaned) }
 }

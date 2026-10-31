@@ -71,6 +71,13 @@
       "when": 1793406272662,
       "tag": "0009_rate_limit",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1793406649545,
+      "tag": "0010_keep_projects",
+      "breakpoints": true
     }
   ]
 }

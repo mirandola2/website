@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { greeting } from './format'
+import { greeting, normalizeName, slugify } from './format'
 
 test('greeting follows the time in Rome', () => {
   // CET (UTC+1) in winter
@@ -11,4 +11,13 @@ test('greeting follows the time in Rome', () => {
   assert.equal(greeting(new Date('2026-12-01T04:59:00Z')), 'Buona notte') // 05:59
   // CEST (UTC+2) in summer
   assert.equal(greeting(new Date('2026-07-01T16:30:00Z')), 'Buona sera') // 18:30
+})
+
+test('slugify drops accents and symbols', () => {
+  assert.equal(slugify('Città & Paese'), 'citta-paese')
+  assert.equal(slugify('  Obiettivi 2024-25!  '), 'obiettivi-2024-25')
+})
+
+test('normalizeName collapses spaces', () => {
+  assert.equal(normalizeName('  MARIO   ROSSI '), 'MARIO ROSSI')
 })

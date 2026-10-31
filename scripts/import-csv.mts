@@ -8,6 +8,7 @@ import Papa from 'papaparse'
 import { sql } from 'drizzle-orm'
 import { db } from './db.mjs'
 import { media, staffMember } from '../db/schema'
+import { slugify } from '../lib/format'
 
 const [target, file] = process.argv.slice(2)
 
@@ -19,15 +20,6 @@ function readCsv(filePath: string) {
 }
 
 const clean = (v: string | undefined) => v?.trim() || null
-
-function slugify(text: string) {
-  return text
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
-}
 
 async function importStaff(filePath = 'content/_capi.csv') {
   const rows = readCsv(filePath)

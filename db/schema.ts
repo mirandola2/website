@@ -47,6 +47,9 @@ export const staffMember = sqliteTable(
     order: integer(),
     email: text().unique(),
     isAdmin: integer({ mode: 'boolean' }).notNull().default(false),
+    // Set by "Elimina" in /tabu/admin/staff: the row is hidden everywhere and can't log in, but it
+    // is never deleted, so its Progetti del Capo are kept
+    deletedAt: integer({ mode: 'timestamp_ms' }),
   },
   t => [check('rs_without_email', sql`${t.coca} = 1 OR ${t.email} IS NULL`)],
 )
@@ -83,7 +86,8 @@ export const yearProject = sqliteTable(
     id: integer().primaryKey({ autoIncrement: true }),
     staffMemberId: integer()
       .notNull()
-      .references(() => staffMember.id, { onDelete: 'cascade' }),
+      // Projects are never deleted: the database refuses to delete a staff row that has any
+      .references(() => staffMember.id, { onDelete: 'restrict' }),
     // '2026-27': the year's template is in scout_year
     scoutYear: text()
       .notNull()

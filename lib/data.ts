@@ -1,7 +1,8 @@
 import 'server-only'
 import { unstable_cache } from 'next/cache'
-import { asc } from 'drizzle-orm'
+import { asc, isNull, sql } from 'drizzle-orm'
 import { db } from './db'
+import { normalizeName } from './format'
 import { link, media, member, staffMember, totem } from '@/db/schema'
 
 // Cached database reads for the public pages: they stay static and are regenerated when a write
@@ -39,6 +40,7 @@ export const getStaffMembers = unstable_cache(
         order: staffMember.order,
       })
       .from(staffMember)
+      .where(isNull(staffMember.deletedAt))
       .orderBy(asc(staffMember.position), asc(staffMember.id)),
   ['staff'],
   { tags: ['staff'], revalidate: REVALIDATE },
@@ -67,4 +69,13 @@ export const getLinks = unstable_cache(
 // Not cached: only the birthdays route reads it, and that route is cached as a whole
 export function getMemberBirthdays() {
   return db.select({ fullName: member.fullName, birthday: member.birthday }).from(member)
+}
+
+// Personal data, not cached: callers must check the session or the Token Magico first.
+// Matched on the whole name, ignoring case and extra spaces.
+export function findMembersByName(name: string) {
+  return db
+    .select({ name: member.fullName, code: member.memberCode, birthday: member.birthday })
+    .from(member)
+    .where(sql`lower(${member.fullName}) = lower(${normalizeName(name)})`)
 }

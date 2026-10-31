@@ -6,16 +6,10 @@ import { db } from '@/lib/db'
 import { requireLeader } from '@/lib/dal'
 import { getYearSetting } from '@/lib/tabu'
 import { MAX_TEXT, type ProjectAnswers, type ProjectTemplate } from '@/lib/project'
+import { text } from '@/lib/validation'
 import { yearProject } from '@/db/schema'
 import type { ActionResult } from '@/components/tabu/types'
 
-// Browsers submit textarea newlines as \r\n
-const text = (max: number) =>
-  z
-    .string()
-    .trim()
-    .max(max, `Massimo ${max} caratteri.`)
-    .transform(v => v.replace(/\r\n?/g, '\n'))
 const score = z.coerce.number().int().min(0).max(5)
 
 // One field per area and question, named "<area>.<question>"

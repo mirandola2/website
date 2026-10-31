@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { asc } from 'drizzle-orm'
+import { asc, isNull } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { requireAdmin } from '@/lib/dal'
 import { staffMember } from '@/db/schema'
@@ -14,7 +14,12 @@ export const metadata: Metadata = { title: 'Admin · Staff' }
 
 export default async function AdminStaffPage() {
   const admin = await requireAdmin()
-  const rows = await db.select().from(staffMember).orderBy(asc(staffMember.position), asc(staffMember.id))
+  // Removed rows stay in the database for their projects, but not in this list
+  const rows = await db
+    .select()
+    .from(staffMember)
+    .where(isNull(staffMember.deletedAt))
+    .orderBy(asc(staffMember.position), asc(staffMember.id))
   const toItem = ({ id, nome, img, staff }: (typeof rows)[number]) => ({ id, nome, img, staff })
   // Same order as the Coca page (components/mdx/Staff.tsx): the override first, then the main order
   const leaders = rows.filter(r => r.coca)
@@ -95,7 +100,7 @@ export default async function AdminStaffPage() {
                     action={deleteStaffMember}
                     submitLabel="Elimina"
                     buttonClassName="btn btn-error btn-outline btn-sm"
-                    confirm={`Eliminare ${row.nome}? Anche il suo progetto verrà cancellato.`}
+                    confirm={`Eliminare ${row.nome}? Sparisce dal sito e non può più accedere; i suoi progetti restano.`}
                   >
                     <input type="hidden" name="id" value={row.id} />
                   </ActionForm>
