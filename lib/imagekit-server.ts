@@ -7,10 +7,19 @@ const STAFF_FOLDER = process.env.IMAGEKIT_STAFF_FOLDER || '/img/staff/'
 
 // The browser sends a 256×256 photo (components/tabu/PhotoUploader.tsx): ~10–30 KB
 export const MAX_PHOTO_BYTES = 100 * 1024
-const PHOTO_TYPES = ['image/webp', 'image/jpeg', 'image/png']
 
-export function checkPhoto(file: unknown): file is File {
-  return file instanceof File && PHOTO_TYPES.includes(file.type) && file.size > 0 && file.size <= MAX_PHOTO_BYTES
+export type PhotoExt = 'webp' | 'jpg' | 'png'
+
+// The format comes from the file's first bytes: the Content-Type is whatever the client sent.
+// null when it's not a WebP, JPEG or PNG within the size limit.
+export async function photoExtension(file: unknown): Promise<PhotoExt | null> {
+  if (!(file instanceof File) || file.size === 0 || file.size > MAX_PHOTO_BYTES) return null
+  const head = new Uint8Array(await file.slice(0, 12).arrayBuffer())
+  const ascii = (from: number, to: number) => String.fromCharCode(...head.subarray(from, to))
+  if (ascii(0, 4) === 'RIFF' && ascii(8, 12) === 'WEBP') return 'webp'
+  if (head[0] === 0xff && head[1] === 0xd8 && head[2] === 0xff) return 'jpg'
+  if (ascii(1, 4) === 'PNG' && head[0] === 0x89 && head[4] === 0x0d && head[5] === 0x0a && head[6] === 0x1a && head[7] === 0x0a) return 'png'
+  return null
 }
 
 function client() {
@@ -19,8 +28,7 @@ function client() {
 }
 
 // The server picks the name: <slug>-<timestamp>.<ext>. A new name per upload means no stale CDN copy.
-export async function uploadStaffPhoto(file: File, slug: string) {
-  const ext = file.type === 'image/webp' ? 'webp' : file.type === 'image/png' ? 'png' : 'jpg'
+export async function uploadStaffPhoto(file: File, ext: PhotoExt, slug: string) {
   const res = await client().files.upload({
     file,
     fileName: `${slug}-${Date.now()}.${ext}`,

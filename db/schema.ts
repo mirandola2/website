@@ -167,3 +167,10 @@ export const verification = sqliteTable(
   },
   t => [index('verification_identifier_idx').on(t.identifier)],
 )
+
+// Fixed-window counters for the public actions (lib/rate-limit.ts), one row per action and IP
+export const rateLimit = sqliteTable('rate_limit', {
+  key: text().primaryKey(),
+  count: integer().notNull(),
+  resetAt: integer({ mode: 'timestamp_ms' }).notNull(),
+})

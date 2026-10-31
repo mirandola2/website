@@ -30,6 +30,8 @@ const optionalText = (max: number) =>
     .transform(v => v.replace(/\r\n?/g, '\n') || null)
 const requiredText = (max: number, label: string) => z.string().trim().min(1, `${label} obbligatorio.`).max(max)
 const id = z.coerce.number().int().positive()
+// Rendered as public links: only http(s) to a real domain (no javascript:, data:, ...)
+const webUrl = z.url({ protocol: /^https?$/, hostname: z.regexes.domain, error: 'Link non valido: deve iniziare con https://.' }).max(2000)
 
 function slugify(text: string) {
   return text
@@ -152,7 +154,7 @@ const MediaSchema = z.object({
   type: z.enum(['image', 'video']),
   year: z.coerce.number().int().min(1950).max(2100),
   name: requiredText(200, 'Nome'),
-  url: z.url('Link non valido.').max(2000),
+  url: webUrl,
   sortOrder: z.coerce.number().int(),
 })
 
@@ -186,12 +188,15 @@ export async function replaceMediaUrls(_prev: ActionResult, formData: FormData):
   const parsed = ReplaceSchema.safeParse(Object.fromEntries(formData))
   if (!parsed.success) return fail(parsed.error)
   const { find, replace } = parsed.data
-  const rows = await db
-    .update(media)
-    .set({ url: sql`replace(${media.url}, ${find}, ${replace})` })
-    .where(sql`instr(${media.url}, ${find}) > 0`)
-    .returning({ id: media.id })
-  return done('media', `Link aggiornati: ${rows.length}.`)
+  const rows = await db.select({ id: media.id, url: media.url }).from(media).where(sql`instr(${media.url}, ${find}) > 0`)
+  const updated = rows.map(r => ({ id: r.id, url: r.url.replaceAll(find, replace) }))
+  // Every new link must still be valid: nothing is saved otherwise
+  const invalid = updated.find(r => !webUrl.safeParse(r.url).success)
+  if (invalid) return { ok: false, message: `Il risultato non sarebbe un link valido: ${invalid.url}` }
+  await db.transaction(async tx => {
+    for (const r of updated) await tx.update(media).set({ url: r.url }).where(eq(media.id, r.id))
+  })
+  return done('media', `Link aggiornati: ${updated.length}.`)
 }
 
 // --- Materials and links ---
@@ -201,7 +206,7 @@ const LinkSchema = z.object({
   category: requiredText(100, 'Categoria'),
   type: z.enum(['link', 'document', 'video', 'book']),
   name: requiredText(200, 'Nome'),
-  url: z.url('Link non valido.').max(2000),
+  url: webUrl,
   sortOrder: z.coerce.number().int(),
 })
 

@@ -2,8 +2,7 @@
 
 import { useState, useRef, useSyncExternalStore } from 'react'
 import { useCookie } from '@/hooks/useCookie'
-import { sha256Hex } from '@/lib/sha256'
-import { searchMemberCode as searchMemberCodeAction } from '@/app/actions/member'
+import { clearMemberToken, saveMemberToken, searchMemberCode as searchMemberCodeAction } from '@/app/actions/member'
 import { authClient } from '@/lib/auth-client'
 import { MagnifyingGlassIcon, SignOutIcon, FloppyDiskIcon, UserCheckIcon } from '@phosphor-icons/react'
 
@@ -26,8 +25,9 @@ function subscribe(listener: () => void) {
 const notify = () => listeners.forEach(l => l())
 
 export default function CodiceSocio({ lastupdate }: CodiceSocioProps) {
-  const pskCookie = useCookie('psk')
-  const hasToken = useSyncExternalStore(subscribe, () => pskCookie.get()?.length === 64, () => false)
+  // The token itself is in an HttpOnly cookie set by the server: this one only says it exists
+  const hintCookie = useCookie('psk_set')
+  const hasToken = useSyncExternalStore(subscribe, () => hintCookie.get() === '1', () => false)
   // Only leaders can have a session (lib/auth.ts). Hiding the token form is cosmetic: the server
   // action checks the session or the token again.
   const { data: session } = authClient.useSession()
@@ -35,20 +35,33 @@ export default function CodiceSocio({ lastupdate }: CodiceSocioProps) {
   const logged = isLeader || hasToken
   const [name, setName] = useState('')
   const [pw, setPw] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [tokenError, setTokenError] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [personData, setPersonData] = useState<PersonData[]>([])
   const dialogRef = useRef<HTMLDialogElement>(null)
 
   async function handleSave() {
-    if (!pw) return
-    pskCookie.set(await sha256Hex(pw), { expires: 365, sameSite: 'strict', secure: location.protocol === 'https:' })
-    setPw('')
-    notify()
+    if (!pw || saving) return
+    setSaving(true)
+    setTokenError('')
+    try {
+      const res = await saveMemberToken(pw)
+      if (res.ok) {
+        setPw('')
+        notify()
+      } else if (res.error === 'rate_limited') setTokenError('Troppi tentativi, riprova tra un’ora.')
+      else setTokenError('Token errato.')
+    } catch {
+      setTokenError('Errore di rete')
+    } finally {
+      setSaving(false)
+    }
   }
 
-  function logout() {
-    pskCookie.remove()
+  async function logout() {
+    await clearMemberToken()
     setPersonData([])
     setError('')
     notify()
@@ -67,6 +80,7 @@ export default function CodiceSocio({ lastupdate }: CodiceSocioProps) {
       const res = await searchMemberCodeAction(cleaned)
       if (res.ok) setPersonData(res.people)
       else if (res.error === 'unauthorized') setError('Non sei autorizzato o il token usato è errato. Esci e riprova.')
+      else if (res.error === 'rate_limited') setError('Troppe ricerche, riprova tra un’ora.')
       else setError('Nome non valido.')
     } catch {
       setError('Errore di rete')
@@ -104,12 +118,13 @@ export default function CodiceSocio({ lastupdate }: CodiceSocioProps) {
                 autoComplete="current-password"
                 className="input join-item w-full"
               />
-              <button type="submit" className="btn btn-primary join-item" disabled={!pw}>
-                <FloppyDiskIcon size={18} weight="bold" aria-hidden />
+              <button type="submit" className="btn btn-primary join-item" disabled={!pw || saving}>
+                {saving ? <span className="loading loading-spinner loading-xs" /> : <FloppyDiskIcon size={18} weight="bold" aria-hidden />}
                 Salva
               </button>
             </form>
           )}
+          {!logged && tokenError && <p className="text-sm text-error -mt-2">{tokenError}</p>}
 
           <form className="join w-full" onSubmit={e => { e.preventDefault(); searchMemberCode() }}>
             <input
