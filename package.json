@@ -10,7 +10,6 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
-    "db:import-d1": "tsx scripts/import-d1.mts",
     "db:import-csv": "tsx scripts/import-csv.mts",
     "test": "tsx --test lib/*.test.ts",
     "db:set-leader": "tsx scripts/set-leader.mts",

@@ -3,11 +3,11 @@ import Papa from 'papaparse'
 import { asc, desc, isNull } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { requireAdmin } from '@/lib/dal'
-import { staffMember, totem } from '@/db/schema'
+import { media, staffMember, totem } from '@/db/schema'
 import { romeToday } from '@/lib/birthdays'
 
-// CSV downloads for admins, in the same order as their admin pages. The staff file has the columns
-// of content/_capi.csv (plus email and admin), so `npm run db:import-csv -- staff` can read it back.
+// CSV downloads for admins, in the same order as their admin pages. The staff and media files are
+// also the backups to rebuild the database: `npm run db:import-csv -- staff|media <file>` reads them.
 const exports: Record<string, () => Promise<object[]>> = {
   staff: async () =>
     (
@@ -28,6 +28,12 @@ const exports: Record<string, () => Promise<object[]>> = {
       email: r.email,
       admin: r.isAdmin ? 1 : 0,
     })),
+  // Same columns as the importer (id = slug), in the public page order
+  media: () =>
+    db
+      .select({ type: media.type, id: media.slug, year: media.year, name: media.name, url: media.url })
+      .from(media)
+      .orderBy(asc(media.sortOrder), asc(media.id)),
   totem: () =>
     db
       .select({ name: totem.name, totem: totem.totem, location: totem.location, year: totem.year })

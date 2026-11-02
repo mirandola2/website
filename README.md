@@ -31,6 +31,7 @@ In questa repository è presente e qui documentato il frontend, mentre il [Middl
    * [Immagini 🖼️](#immagini-)
    * [Analytics 📊](#analytics-)
    * [Hosting ☁️](#hosting-)
+   * [Messa online 🚀](#messa-online-)
 
 
 ## Local development 🪄
@@ -271,13 +272,10 @@ Comandi utili:
 npm run db:generate                      # dopo aver modificato db/schema.ts: crea una nuova migrazione
 npm run db:migrate                       # applica le migrazioni al database di TURSO_DATABASE_URL
 npm run db:studio                        # interfaccia web per guardare e modificare i dati
-npm run db:import-d1 -- d1.sql           # importa totem e codici socio da un export del vecchio Worker
-npm run db:import-csv -- staff           # importa/aggiorna i capi da content/_capi.csv
-npm run db:import-csv -- media           # sostituisce i link foto/video con content/_media.csv
+npm run db:import-csv -- staff <file>    # importa/aggiorna i capi da un CSV (l'export di Admin → Staff)
+npm run db:import-csv -- media <file>    # sostituisce i link foto/video con un CSV (l'export di Admin → Foto e video)
 npm run db:set-leader -- <slug> <email> [--admin]   # email di accesso al Tabù di un capo
 ```
-
-L'export del vecchio database Cloudflare D1 si ottiene, dalla cartella del Worker, con `npx wrangler d1 export people --remote --output=d1.sql`.
 
 Note sui capi (`staff_member`):
 
@@ -312,6 +310,90 @@ Le statistiche del sito sono gestite da [Vercel Web Analytics](https://vercel.co
 
 ## Hosting ☁️
 
-Il sito è ospitato gratuitamente su [Vercel](https://vercel.com) (piano Hobby) e il database su Turso (piano gratuito). Il dominio è `mirandola2.it`. Sitemap e `robots.txt` sono generati da `app/sitemap.ts` e `app/robots.ts`.
+Il sito è ospitato gratuitamente su [Vercel](https://vercel.com) (piano Hobby) e il database su Turso (piano gratuito), entrambi a Francoforte: il database nella location `aws-eu-central-1`, le funzioni di Vercel nella region `fra1` (`vercel.json`), così i dati restano in Europa e database e funzioni sono vicini. Il dominio è `mirandola2.it`. Sitemap e `robots.txt` sono generati da `app/sitemap.ts` e `app/robots.ts`.
 
 Su Vercel vanno impostate le stesse variabili d'ambiente di `.env.example` (database, `MEMBER_PSK_SHA256`, Better Auth, Google, ImageKit), con `BETTER_AUTH_URL=https://mirandola2.it` e `IMAGEKIT_STAFF_FOLDER=/img/staff/`. Le pagine pubbliche sono statiche; girano come funzioni solo le API (`/api/...`), il Tabù e la rigenerazione delle pagine dopo una modifica ai dati.
+
+## Messa online 🚀
+
+Il sito è già online: questa sezione è un promemoria nel caso si debba ripartire da zero (nuovo database, nuovo progetto Vercel). Ordine importante: la build legge il database, quindi database e variabili d'ambiente devono esserci prima del primo deploy.
+
+**Prima di tutto, i backup**, finché il sito funziona:
+
+- **Copia completa** (tutte le tabelle, compresi i Progetti del Capo e i codici socio): `turso db shell <nome-db> .dump > backup.sql`. Si ripristina creando il nuovo database da quel file (`turso db create <nome-db> --group eu --from-dump backup.sql`) e saltando così il passo 2. Il file contiene dati personali: tenerlo fuori dal repository (i `.sql` nella cartella del sito sono esclusi da git).
+- **CSV dal Tabù**, per ripartire con un database vuoto: *Admin → Staff*, *Admin → Foto e video* e *Admin → Totem* (pulsanti *Esporta*), più il file dei codici socio usato in *Admin → Codici socio e compleanni*. I Progetti del Capo non hanno un export: con questa strada si perdono.
+
+### 1. Database su Turso
+
+Con la [CLI di Turso](https://docs.turso.tech/cli/installation) (`brew install tursodatabase/tap/turso`, poi `turso auth login`):
+
+```sh
+turso db locations                                   # controllare che ci sia aws-eu-central-1
+turso group create eu --location aws-eu-central-1
+turso db create <nome-db> --group eu
+turso db show <nome-db> --url                        # → TURSO_DATABASE_URL
+turso db tokens create <nome-db>                     # → TURSO_AUTH_TOKEN
+```
+
+### 2. Tabelle e dati
+
+In un terminale, dalla cartella del sito, si puntano gli script al database online. Le variabili impostate nella shell hanno la precedenza su `.env.local`: ogni script stampa per prima cosa `Database: <host>`, controllare che sia quello di Turso e non `file:local.db`.
+
+```sh
+export TURSO_DATABASE_URL="libsql://<nome-db>-<organizzazione>.turso.io"
+export TURSO_AUTH_TOKEN="<token>"
+
+npm run db:migrate                          # crea tutte le tabelle
+npm run db:import-csv -- staff staff.csv    # capi e RS, con email e admin (export di Admin → Staff)
+npm run db:import-csv -- media media.csv    # link foto e video (export di Admin → Foto e video)
+```
+
+- **Ripetere gli import**: `import-csv -- media` sostituisce tutte le righe; `import-csv -- staff` aggiorna i capi per nome e mantiene email, admin e foto caricate.
+- **Il resto si inserisce dal Tabù**, una volta entrati come admin: i codici socio e i compleanni da *Admin → Codici socio e compleanni* (file CSV), i nomi totem da *Admin → Totem*, materiali e link da *Admin → Materiali e link*.
+
+### 3. Primo admin
+
+Se lo staff è stato importato dall'export, email e admin ci sono già e questo passo non serve. Altrimenti il primo admin si crea da terminale, con lo stesso `export` del passo 2 (gli altri si nominano poi dal Tabù):
+
+```sh
+npm run db:set-leader                                        # elenca gli slug (capo/RS)
+npm run db:set-leader -- <slug> <email-google> --admin       # es. nome-cognome
+```
+
+L'email deve essere quella dell'account Google con cui si accede, e la riga deve essere un capo (`coca = 1`). Finito, chiudere il terminale (o `unset TURSO_DATABASE_URL TURSO_AUTH_TOKEN`) così gli script tornano a usare `local.db`.
+
+### 4. Google
+
+Nella Google Cloud console, *APIs & Services → Credentials*, nel client OAuth:
+
+- **Authorized redirect URIs**: `https://mirandola2.it/api/auth/callback/google` (più `http://localhost:3000/api/auth/callback/google` per lo sviluppo).
+- **OAuth consent screen**: pubblicare l'app, altrimenti possono entrare solo gli utenti di test (gli scope email e profilo non richiedono la verifica di Google).
+
+### 5. Vercel
+
+In *Settings* del progetto:
+
+- **Build and Deployment**: framework Next.js, nessuna *Output Directory* personalizzata (prima era `out`), comando di build predefinito.
+- **Environment Variables**, sia per *Production* sia per *Preview*:
+
+| Variabile | Valore |
+|---|---|
+| `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN` | dal passo 1 |
+| `BETTER_AUTH_SECRET` | nuovo, generato con `openssl rand -base64 32` (non quello di sviluppo) |
+| `BETTER_AUTH_URL` | `https://mirandola2.it` |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | dal client OAuth del passo 4 |
+| `MEMBER_PSK_SHA256` | sha256 del Token Magico (comando in `.env.example`) |
+| `IMAGEKIT_PRIVATE_KEY` | ImageKit → *Developer options* |
+| `IMAGEKIT_STAFF_FOLDER` | `/img/staff/` |
+
+La region delle funzioni (`fra1`) è già in `vercel.json`.
+
+### 6. Deploy
+
+1. Push di un branch: Vercel crea un deploy di anteprima. Lì si controllano le pagine pubbliche (totem, compleanni, staff, foto e video, codice socio con il token). Il login con Google non funziona sugli indirizzi di anteprima: il client OAuth autorizza solo `mirandola2.it`.
+2. Merge in `main`: Vercel pubblica su `mirandola2.it`. Controllare il login al Tabù, un caricamento di foto, `/sitemap.xml` e `/robots.txt`.
+3. Nel Tabù, *Admin → Progetti del Capo → Aggiungi un anno*: l'anno parte nascosto, va reso visibile e attivo quando il modello è pronto. Poi si aggiungono le email degli altri capi da *Admin → Staff*.
+
+### 7. Dopo il passaggio
+
+Il vecchio backend (il Worker `people` di Cloudflare e il suo database D1) non è più usato dal sito: si può eliminare, cambiando anche il secret `token_coca`, che il Worker scriveva nei log. Il Worker della parola del giorno (`daily.mirandola2.workers.dev`) è un altro e resta in uso.

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { asc, desc, eq } from 'drizzle-orm'
-import { CameraIcon, VideoCameraIcon } from '@phosphor-icons/react/ssr'
+import { CameraIcon, DownloadSimpleIcon, VideoCameraIcon } from '@phosphor-icons/react/ssr'
 import { db } from '@/lib/db'
 import { requireAdmin } from '@/lib/dal'
 import { media } from '@/db/schema'
@@ -91,6 +91,10 @@ export default async function AdminMediaPage({ searchParams }: { searchParams: P
           </ActionForm>
         </div>
       </details>
+      <a href="/tabu/admin/export/media/" download className="btn btn-outline btn-sm w-fit">
+        <DownloadSimpleIcon size={16} weight="bold" aria-hidden />
+        Esporta tutti in CSV
+      </a>
     </CrudPage>
   )
 }

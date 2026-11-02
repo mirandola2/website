@@ -1,8 +1,11 @@
-// Imports the CSV collections into the database.
+// Imports a CSV into the database, to rebuild it from scratch (README → Messa online).
 //
-//   npm run db:import-csv -- staff [content/_capi.csv]   upsert by slug (from `nome`), CSV order = position: CSV columns
-//                                                        are overwritten, email/isAdmin/imgFileId kept
-//   npm run db:import-csv -- media [content/_media.csv]  replaces every media row (CSV order = sortOrder)
+//   npm run db:import-csv -- staff <file.csv>   upsert by slug (from `nome`), CSV order = position. Reads the
+//                                               export of Admin → Staff: on existing rows the CSV columns are
+//                                               overwritten and email/admin/imgFileId kept; new rows also take
+//                                               the `email` and `admin` columns, when present
+//   npm run db:import-csv -- media <file.csv>   replaces every media row (CSV order = sortOrder); columns
+//                                               type,id,year,name,url
 import fs from 'fs'
 import Papa from 'papaparse'
 import { sql } from 'drizzle-orm'
@@ -13,7 +16,8 @@ import { slugify } from '../lib/format'
 const [target, file] = process.argv.slice(2)
 
 function readCsv(filePath: string) {
-  return Papa.parse<Record<string, string>>(fs.readFileSync(filePath, 'utf-8'), {
+  // The admin exports start with a BOM (for Excel), which would end up in the first column's name
+  return Papa.parse<Record<string, string>>(fs.readFileSync(filePath, 'utf-8').replace(/^\uFEFF/, ''), {
     header: true,
     skipEmptyLines: true,
   }).data
@@ -21,7 +25,7 @@ function readCsv(filePath: string) {
 
 const clean = (v: string | undefined) => v?.trim() || null
 
-async function importStaff(filePath = 'content/_capi.csv') {
+async function importStaff(filePath: string) {
   const rows = readCsv(filePath)
   const seen = new Set<string>()
   const values = rows.map((r, i) => {
@@ -40,6 +44,8 @@ async function importStaff(filePath = 'content/_capi.csv') {
       img: clean(r.img),
       order: order === null ? null : Number(order),
       position: i + 1,
+      email: clean(r.email)?.toLowerCase() ?? null,
+      isAdmin: r.admin?.trim() === '1',
     }
   })
 
@@ -66,7 +72,7 @@ async function importStaff(filePath = 'content/_capi.csv') {
   console.log(`Upserted ${values.length} staff members (${values.filter(v => v.coca).length} leaders)`)
 }
 
-async function importMedia(filePath = 'content/_media.csv') {
+async function importMedia(filePath: string) {
   const values = readCsv(filePath).map((r, i): typeof media.$inferInsert => {
     const type = r.type?.trim()
     if (type !== 'image' && type !== 'video') throw new Error(`Row ${i + 2}: unknown type "${type}"`)
@@ -87,6 +93,6 @@ async function importMedia(filePath = 'content/_media.csv') {
   console.log(`Replaced media with ${values.length} rows`)
 }
 
+if (!file || (target !== 'staff' && target !== 'media')) throw new Error('Usage: import-csv.mts staff|media <file.csv>')
 if (target === 'staff') await importStaff(file)
-else if (target === 'media') await importMedia(file)
-else throw new Error('Usage: import-csv.mts staff|media [file.csv]')
+else await importMedia(file)

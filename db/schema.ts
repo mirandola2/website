@@ -22,7 +22,7 @@ export const member = sqliteTable('member', {
   birthday: text().notNull(),
 })
 
-// From content/_capi.csv: leaders (coca = 1) and RS in service (coca = 0), shown in `position` order.
+// Imported once from the old content/_capi.csv: leaders (coca = 1) and RS in service (coca = 0), shown in `position` order.
 // Only leaders can have an email, so RS can never log in. The email (lowercase) is the login
 // allowlist and the link to the Better Auth `user` (lib/auth.ts, lib/dal.ts).
 export const staffMember = sqliteTable(
@@ -54,7 +54,7 @@ export const staffMember = sqliteTable(
   t => [check('rs_without_email', sql`${t.coca} = 1 OR ${t.email} IS NULL`)],
 )
 
-// From content/_media.csv. `slug` is the CSV id, used as the card anchor: an image and a video of
+// Imported once from the old content/_media.csv. `slug` is the CSV id, used as the card anchor: an image and a video of
 // the same event share it, so it is not unique.
 export const media = sqliteTable('media', {
   id: integer().primaryKey({ autoIncrement: true }),
