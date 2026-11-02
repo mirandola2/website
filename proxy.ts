@@ -4,11 +4,14 @@ import { LEADER_HINT_COOKIE } from '@/lib/leader-hint'
 
 // Optimistic check only (is there a session cookie?): pages and server actions do the real
 // check with requireLeader()/requireAdmin() in lib/dal.ts.
+// Pages that need no session: the login and the policies linked from it and from Google's consent screen
+const PUBLIC_PATHS = ['/tabu/login', '/tabu/privacy', '/tabu/termini']
+
 export function proxy(request: NextRequest) {
-  const isLogin = request.nextUrl.pathname.startsWith('/tabu/login')
+  const isPublic = PUBLIC_PATHS.some(path => request.nextUrl.pathname.startsWith(path))
   const loggedIn = !!getSessionCookie(request)
   const response =
-    !isLogin && !loggedIn ? NextResponse.redirect(new URL('/tabu/login/', request.url)) : NextResponse.next()
+    !isPublic && !loggedIn ? NextResponse.redirect(new URL('/tabu/login/', request.url)) : NextResponse.next()
 
   // Keep the hint for the public navbar in step with the session cookie
   const hint = request.cookies.has(LEADER_HINT_COOKIE)

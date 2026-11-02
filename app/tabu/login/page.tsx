@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { LockKeyIcon } from '@phosphor-icons/react/ssr'
 import { getLeader } from '@/lib/dal'
@@ -30,6 +31,17 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           </div>
         )}
         <GoogleSignIn />
+        <p className="text-xs opacity-70 text-center">
+          Accedendo accetti i{' '}
+          <Link className="link" href="/tabu/termini/">
+            Termini di servizio
+          </Link>{' '}
+          e l’
+          <Link className="link" href="/tabu/privacy/">
+            Informativa sulla privacy
+          </Link>
+          .
+        </p>
       </div>
     </div>
   )

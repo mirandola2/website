@@ -2,7 +2,8 @@ import type { MetadataRoute } from 'next'
 
 export default function robots(): MetadataRoute.Robots {
   return {
-    rules: { userAgent: '*', allow: '/', disallow: ['/tabu/', '/api/'] },
+    // The Tabù policies stay crawlable (Google's OAuth verification fetches them); they are noindex anyway
+    rules: { userAgent: '*', allow: ['/', '/tabu/privacy/', '/tabu/termini/'], disallow: ['/tabu/', '/api/'] },
     sitemap: 'https://mirandola2.it/sitemap.xml',
   }
 }
