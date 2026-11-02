@@ -16,8 +16,12 @@ export default function NavLink({
 }) {
   const active = normalize(usePathname()) === normalize(href)
 
+  // The Tabù pages are dynamic: prefetching them would run the server (and the session check) on
+  // every visit to a public page
+  const prefetch = href.startsWith('/tabu') ? false : undefined
+
   return (
-    <Link href={href} aria-current={active ? 'page' : undefined} className={className}>
+    <Link href={href} prefetch={prefetch} aria-current={active ? 'page' : undefined} className={className}>
       {children}
     </Link>
   )
