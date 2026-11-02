@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { asc, isNull } from 'drizzle-orm'
+import { DownloadSimpleIcon } from '@phosphor-icons/react/ssr'
 import { db } from '@/lib/db'
 import { requireAdmin } from '@/lib/dal'
 import { staffMember } from '@/db/schema'
@@ -27,7 +28,13 @@ export default async function AdminStaffPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="font-display text-4xl text-primary">Staff</h1>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="font-display text-4xl text-primary">Staff</h1>
+        <a href="/tabu/admin/export/staff/" download className="btn btn-outline btn-sm">
+          <DownloadSimpleIcon size={16} weight="bold" aria-hidden />
+          Esporta CSV
+        </a>
+      </div>
       <p className="opacity-70">
         Capi (in Co.Ca.) e RS in servizio, nell&apos;ordine in cui compaiono sul sito. Solo i capi con un&apos;email
         possono entrare nel Tabù.

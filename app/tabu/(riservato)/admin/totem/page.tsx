@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { asc, desc, eq, sql } from 'drizzle-orm'
+import { DownloadSimpleIcon } from '@phosphor-icons/react/ssr'
 import { db } from '@/lib/db'
 import { requireAdmin } from '@/lib/dal'
 import { totem } from '@/db/schema'
@@ -58,7 +59,14 @@ export default async function AdminTotemPage({ searchParams }: { searchParams: P
           Cerca
         </button>
       </form>
-      <p className="text-sm opacity-70">{rows.length} risultati</p>
+      <div className="flex flex-wrap items-center gap-3">
+        <p className="text-sm opacity-70">{rows.length} risultati</p>
+        {/* Always every totem, whatever the search */}
+        <a href="/tabu/admin/export/totem/" download className="btn btn-outline btn-sm">
+          <DownloadSimpleIcon size={16} weight="bold" aria-hidden />
+          Esporta tutti in CSV
+        </a>
+      </div>
     </CrudPage>
   )
 }
