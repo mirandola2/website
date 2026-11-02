@@ -104,6 +104,7 @@ const OrderSchema = z.array(id).min(1)
 // Drag and drop in /tabu/admin/staff: the main order (every row) or the Coca page one (leaders)
 export async function saveStaffOrder(kind: 'main' | 'coca', ids: number[]): Promise<ActionResult> {
   await requireAdmin()
+  if (kind !== 'main' && kind !== 'coca') return { ok: false, message: 'Ordine non valido.' }
   const parsed = OrderSchema.safeParse(ids)
   if (!parsed.success) return fail(parsed.error)
   const column = kind === 'main' ? 'position' : 'order'
