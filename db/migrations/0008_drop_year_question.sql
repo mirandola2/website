@@ -1,0 +1,1 @@
+ALTER TABLE `scout_year` DROP COLUMN `question`;

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { slugify } from '@/lib/format'
 
 interface TocItem {
   id: string
@@ -11,16 +12,6 @@ interface TocItem {
 interface TableOfContentsProps {
   notaside?: boolean
   maxdepth?: number
-}
-
-// "Obiettivi 2024-25" -> "obiettivi-2024-25", "Città & Paese" -> "citta-paese"
-function slugify(text: string) {
-  return text
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
 }
 
 // MDX headings have no ids: assign them here so both the TOC and in-page links

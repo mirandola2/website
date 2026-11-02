@@ -33,11 +33,14 @@ I dati sono consultati dal Titolare solo in forma aggregata, a fini statistici.
 
 La pagina [Codice Socio](/codice-socio), riservata ai soci, invia il nome cercato al nostro servizio di ricerca per restituire il relativo codice socio. Il nome cercato viene usato solo per rispondere alla richiesta.
 
+L’area riservata ai capi (*Tabù*) è accessibile solo ai capi della Comunità Capi, con il proprio account Google. All’accesso Google ci comunica nome e indirizzo email, che conserviamo per riconoscere il capo; nell’area riservata i capi possono inoltre salvare il proprio progetto dell’anno, una descrizione e una foto, che compare nelle pagine degli staff.
+
 ## Cookie e dati salvati sul dispositivo
 
 Il Sito utilizza esclusivamente strumenti tecnici, necessari al suo funzionamento, per i quali non è richiesto il consenso:
 
 - **Cookie `psk`**: viene salvato solo se un socio accede alla pagina Codice Socio e contiene un’impronta cifrata della password di accesso, per non doverla reinserire. Dura al massimo 12 mesi e si cancella con il pulsante per uscire o dalle impostazioni del browser.
+- **Cookie di accesso al Tabù** (`better-auth.session_token`): viene salvato solo quando un capo accede all’area riservata e serve a mantenerlo collegato. Scade dopo 7 giorni senza accessi e si cancella con il pulsante *Esci*.
 - **Memoria di sessione del browser** (*sessionStorage*): conserva temporaneamente i contenuti dei riquadri della pagina iniziale (meteo, compleanni, parola del giorno) per non scaricarli di nuovo a ogni pagina. Non contiene dati personali e si cancella alla chiusura della scheda.
 
 Il Sito non installa cookie di profilazione o di terze parti. Fanno eccezione i contenuti incorporati descritti più avanti, che vengono caricati solo su richiesta dell’utente.
@@ -49,8 +52,10 @@ Per mostrare le pagine il Sito si appoggia ai seguenti fornitori, che trattano i
 | Servizio | A cosa serve |
 | --- | --- |
 | [Vercel](https://vercel.com/legal/privacy-policy) | Hosting del Sito e statistiche di visita anonime |
-| [ImageKit](https://imagekit.io/privacy-policy) | Ottimizzazione e distribuzione delle immagini |
-| [Cloudflare](https://www.cloudflare.com/privacypolicy/) | Servizi del gruppo per compleanni, parola del giorno e Codice Socio |
+| [ImageKit](https://imagekit.io/privacy-policy) | Ottimizzazione, distribuzione e archiviazione delle immagini (anche le foto dei capi) |
+| [Turso](https://turso.tech/privacy-policy) | Database del Sito (compleanni, Codice Socio e area riservata ai capi) |
+| [Google](https://policies.google.com/privacy) | Accesso dei capi all’area riservata (*Accedi con Google*) |
+| [Cloudflare](https://www.cloudflare.com/privacypolicy/) | Servizio del gruppo per la parola del giorno |
 | [Open-Meteo](https://open-meteo.com/en/terms) | Previsioni meteo nella pagina iniziale |
 | [DiceBear](https://www.dicebear.com/legal/privacy-policy/) | Immagini segnaposto per chi non ha una foto nelle pagine degli staff |
 | [OpenStreetMap](https://osmfoundation.org/wiki/Privacy_Policy) | Mappa della sede nella pagina Contatti |

@@ -1,5 +1,5 @@
 import type { Icon } from '@phosphor-icons/react'
-import { BroadcastIcon, CardsThreeIcon, IdentificationCardIcon, PawPrintIcon } from '@phosphor-icons/react/ssr'
+import { BroadcastIcon, CardsThreeIcon, IdentificationCardIcon, LockKeyIcon, PawPrintIcon } from '@phosphor-icons/react/ssr'
 
 export const DRAWER_ID = 'main-drawer'
 
@@ -76,4 +76,5 @@ export const utilityItems: UtilityItem[] = [
   { label: 'Traduttore Morse', href: '/morse', icon: BroadcastIcon },
   { label: 'Generatore Alci', href: '/alci', icon: CardsThreeIcon },
   { label: 'Archivio Totem', href: '/totem', icon: PawPrintIcon },
+  { label: 'Tabù (area capi)', href: '/tabu', icon: LockKeyIcon },
 ]

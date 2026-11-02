@@ -2,6 +2,8 @@
 
 import { useState, useMemo } from 'react'
 import Image from 'next/image'
+import { staffImgPath } from '@/lib/imagekit'
+import { staffColors, staffLabels } from '@/lib/staff'
 // Only the public fields: names are already resolved on the server (see Staff.tsx).
 export interface StaffPerson {
   name: string
@@ -17,28 +19,6 @@ interface StaffGridProps {
   showBadges?: boolean
   showDesc?: boolean
   selector?: boolean
-}
-
-const staffLabels: Record<string, string> = {
-  L: 'Lupetti',
-  C: 'Coccinelle',
-  E: 'Esploratori',
-  G: 'Guide',
-  N: 'Noviziato',
-  CF: 'Clan Fuoco',
-  CC: 'Co.Ca.',
-  CJ: 'Co.Ca.',
-}
-
-const staffColors: Record<string, string> = {
-  L: 'bg-lc text-lc-content',
-  C: 'bg-lc text-lc-content',
-  E: 'bg-eg text-eg-content',
-  G: 'bg-eg text-eg-content',
-  N: 'bg-rs text-rs-content',
-  CF: 'bg-rs text-rs-content',
-  CC: 'bg-cc text-cc-content',
-  CJ: 'bg-cc text-cc-content',
 }
 
 // `ruolo` lists one service per staff ("Capo Gruppo | Aiuto Capo Fuoco" for staff "CJ|CF").
@@ -92,7 +72,7 @@ export default function StaffGrid({
             <div className="card-body p-5">
               <div className={`flex gap-4 justify-start ${showBadges ? 'items-center' : 'items-start'} mb-4`}>
                 <Image
-                  src={person.img ? `/img/staff/${person.img}` : `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(person.name)}`}
+                  src={person.img ? staffImgPath(person.img) : `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(person.name)}`}
                   alt={person.name}
                   width={112}
                   height={112}

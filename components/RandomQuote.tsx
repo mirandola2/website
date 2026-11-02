@@ -1,7 +1,7 @@
 'use client'
 
 import { useSyncExternalStore } from 'react'
-import type { Quote } from '@/lib/content'
+import type { Quote } from '@/content/quotes'
 
 // One random draw per page load. The static HTML is built once, so the pick must happen
 // in the browser; the prerender keeps the space with an invisible placeholder.

@@ -43,6 +43,9 @@ export default function HeaderNavbar({ children }: { children: React.ReactNode }
 
   const solid = scrolled || isBlog
 
+  // The Tabù (leaders' area) has its own navbar (components/tabu/TabuNavbar.tsx)
+  if (pathname === '/tabu' || pathname.startsWith('/tabu/')) return null
+
   // `data-scrolled` lets the children (e.g. the logo) shrink once the page is scrolled
   return (
     <div

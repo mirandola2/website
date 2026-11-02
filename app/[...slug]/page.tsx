@@ -8,6 +8,9 @@ interface Props {
   params: Promise<{ slug: string[] }>
 }
 
+// Only the pages found at build time: any other path is a static 404
+export const dynamicParams = false
+
 export async function generateStaticParams() {
   return getAllPages().map(page => ({
     slug: page.path.split('/').filter(Boolean),

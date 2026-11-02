@@ -13,6 +13,9 @@ interface Props {
   params: Promise<{ slug: string }>
 }
 
+// Only the pages found at build time: any other path is a static 404
+export const dynamicParams = false
+
 export async function generateStaticParams() {
   return getAllBlogPosts().map(post => ({ slug: post.slug }))
 }

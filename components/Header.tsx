@@ -2,6 +2,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import HeaderNavbar from './HeaderNavbar'
 import NavLink from './NavLink'
+import SiteAccount from './SiteAccount'
 import { DRAWER_ID, menuItems, utilityItems } from './navigation'
 import { CaretDownIcon, ListIcon, SquaresFourIcon, XIcon } from '@phosphor-icons/react/ssr'
 
@@ -169,8 +170,9 @@ export default function Header({ children }: { children: React.ReactNode }) {
                 <Image
                   src="/img/graphics/logo_white.svg"
                   alt="Logo Scout Mirandola 2"
-                  width={64}
-                  height={64}
+                  // Same size as the drawer and Tabù logos: one ImageKit file on every page
+                  width={96}
+                  height={96}
                   className="h-14 w-auto transition-[height] duration-300 xl:h-16 group-data-scrolled/navbar:h-12 xl:group-data-scrolled/navbar:h-14"
                 />
               </Link>
@@ -179,6 +181,9 @@ export default function Header({ children }: { children: React.ReactNode }) {
             <DesktopMenu />
 
             <UtilitiesFab />
+
+            {/* Only for a logged-in leader */}
+            <SiteAccount />
 
             <label htmlFor={DRAWER_ID} className={`${iconButton} xl:hidden`}>
               <ListIcon size={28} weight="bold" aria-hidden />

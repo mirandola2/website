@@ -36,3 +36,12 @@ public/img/**
 # Local Netlify folder
 .netlify
 AGENTS.md
+
+# Local SQLite database (real birthdays and member codes)
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Database dumps in the project root (d1.sql: real birthdays and member codes)
+/*.sql
