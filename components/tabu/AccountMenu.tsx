@@ -8,6 +8,7 @@ import { HouseIcon, SignOutIcon, UserCircleCheckIcon, UserIcon } from '@phosphor
 import { LEADER_HINT_COOKIE } from '@/lib/leader-hint'
 import type { NavbarLeader } from '@/lib/dal'
 import { confirmLeave } from '@/lib/unsaved-changes'
+import { clearPrivateCache } from '@/lib/pwa'
 
 const blur = () => (document.activeElement as HTMLElement | null)?.blur()
 
@@ -23,6 +24,8 @@ export default function AccountMenu({ leader, onSignedOut }: { leader: NavbarLea
   async function signOut() {
     if (!confirmLeave()) return
     setLeaving(true)
+    // First: the leaders' projects stored for offline use must go even if the sign out then fails
+    await clearPrivateCache()
     // Loaded on demand: this menu is in every page's bundle, the auth client is only needed here
     const { authClient } = await import('@/lib/auth-client')
     await authClient.signOut()

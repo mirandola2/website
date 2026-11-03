@@ -28,6 +28,7 @@ In questa repository è presente e qui documentato il frontend, mentre il [Middl
       + [Menu](#menu)
    * [Database 🗄️](#database-)
    * [Tabù 🔒](#tabù-)
+   * [App installabile e offline 📲](#app-installabile-e-offline-)
    * [Immagini 🖼️](#immagini-)
    * [Analytics 📊](#analytics-)
    * [Hosting ☁️](#hosting-)
@@ -298,6 +299,23 @@ Il Tabù (`/tabu`, nel menu *Strumenti*) è l'area riservata ai capi: ognuno com
 - **Foto**: il browser ritaglia la foto in un quadrato 256×256 (massimo 100 KB); il server la carica su ImageKit (cartella `IMAGEKIT_STAFF_FOLDER`: `/dev/staff/` in locale, `/img/staff/` online) e cancella la precedente solo se era stata caricata dal sito.
 - **Google**: nel client OAuth della Google Cloud console vanno autorizzati i redirect `http://localhost:3000/api/auth/callback/google` e `https://mirandola2.it/api/auth/callback/google`.
 - **In locale senza Google**: `npm run db:dev-login -- <email>` apre una sessione per un capo e stampa il cookie da impostare nel browser (solo con un database `file:`).
+
+## App installabile e offline 📲
+
+Il sito è una PWA: `app/manifest.ts` lo rende installabile e `public/sw.js` (il service worker) tiene una copia delle pagine che funzionano offline: Home, Morse, Totem, Codice Socio e, per i capi, la Bacheca e i Progetti del Tabù. La lista è in `lib/pwa.ts` e in testa a `sw.js` (vanno tenute uguali). Le pagine del Tabù si cancellano dal dispositivo all'uscita (`clearPrivateCache`). Quando cambia la logica del worker si alza `VERSION` in `sw.js`. Le icone si rigenerano con `scripts/make-icons.mts`.
+
+Installazione, service worker e **torcia del Morse** richiedono un **contesto sicuro**: HTTPS oppure `localhost`. Per questo non funzionano:
+
+- con `npm run dev`: il service worker si registra solo in produzione, altrimenti servirebbe file vecchi mentre sviluppi;
+- dal telefono su `http://192.168.x.x:3000`: l'indirizzo di rete locale non è sicuro, quindi il browser nasconde fotocamera e service worker.
+
+Per provarli:
+
+- **PC**: `npm run build && npm start`, poi `http://localhost:3000` (in Chrome compare l'icona di installazione nella barra degli indirizzi).
+- **Android**: con il debug USB attivo, `adb reverse tcp:3000 tcp:3000` e poi `http://localhost:3000` sul telefono, che il browser tratta come sicuro. Oppure un deploy di anteprima su Vercel, che è in HTTPS.
+- **iOS**: non c'è la torcia; l'installazione è "Aggiungi alla schermata Home" e richiede HTTPS (anteprima Vercel).
+
+Per vedere cosa è salvato: DevTools → Application → Service Workers e Cache storage. Per provare l'offline: spunta *Offline* in Service Workers.
 
 ## Immagini 🖼️
 

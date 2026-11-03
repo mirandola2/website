@@ -3,6 +3,8 @@ import { Analytics } from '@vercel/analytics/next'
 import { Roboto, Roboto_Slab, Roboto_Serif, Caprasimo } from 'next/font/google'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
+import OfflineBanner from '@/components/OfflineBanner'
+import PwaRegister from '@/components/PwaRegister'
 import './globals.css'
 
 const roboto = Roboto({
@@ -40,7 +42,9 @@ export const metadata: Metadata = {
   description: 'Siamo a Mirandola dal 1983: scopri le ultime notizie, la nostra storia, i nostri staff, i nomi totem, la galleria foto e video e una raccolta di strumenti utili.',
   icons: {
     icon: '/favicon.ico',
+    apple: '/icons/apple-touch-icon.png',
   },
+  appleWebApp: { capable: true, title: 'Mirandola 2', statusBarStyle: 'default' },
 }
 
 export const viewport: Viewport = {
@@ -64,6 +68,8 @@ export default function RootLayout({
           <main className="flex-1">{children}</main>
           <Footer />
         </Header>
+        <OfflineBanner />
+        <PwaRegister />
         <Analytics />
       </body>
     </html>

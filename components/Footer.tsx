@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { XIcon } from '@phosphor-icons/react'
+import InstallApp from './InstallApp'
 
 export default function Footer() {
   return (
@@ -35,6 +36,7 @@ export default function Footer() {
                   </button>
                 </div>
               </nav>
+              <InstallApp />
             </div>
           </aside>
 
