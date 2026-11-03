@@ -17,8 +17,9 @@ export default function ProjectDialog({ trigger, title, children }: { trigger: R
       >
         {trigger}
       </button>
-      <dialog ref={dialogRef} className="modal" aria-label={title}>
-        <div className="modal-box w-11/12 max-w-4xl">
+      {/* pt-26: the box is centred below the sticky navbar (two rows on small screens), never under it */}
+      <dialog ref={dialogRef} className="modal pt-26" aria-label={title}>
+        <div className="modal-box w-11/12 max-w-4xl max-h-[calc(100dvh-8rem)]">
           <form method="dialog">
             <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" aria-label="Chiudi">
               <XIcon size={18} weight="bold" aria-hidden />
