@@ -11,6 +11,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "db:import-csv": "tsx scripts/import-csv.mts",
+    "db:import-projects": "tsx scripts/import-projects.mts",
     "test": "tsx --test lib/*.test.ts",
     "db:set-leader": "tsx scripts/set-leader.mts",
     "db:dev-login": "tsx scripts/dev-login.mts"
