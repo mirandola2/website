@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react'
 import { useCachedFetch } from '@/hooks/useCachedFetch'
 import { HandTapIcon } from '@phosphor-icons/react'
+import { titleCase } from '@/lib/format'
 import LoadingState from './LoadingState'
 
 interface BirthdayPerson {
@@ -18,7 +19,7 @@ function birthdaysFormatter(birthdays: BirthdayPerson[]): string {
   const birthdaysReduced = birthdays.reduce<Record<string, string[]>>((acc, curr) => {
     const t = curr.t_minus
     acc[t] = acc[t] || []
-    acc[t].push(`${curr.name} ${curr.last_initial}.`)
+    acc[t].push(titleCase(`${curr.name} ${curr.last_initial}.`))
     if (t > 1) {
       counterFarBD += 1
     }

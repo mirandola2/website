@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { greeting, normalizeName, slugify } from './format'
+import { greeting, normalizeName, slugify, titleCase } from './format'
 
 test('greeting follows the time in Rome', () => {
   // CET (UTC+1) in winter
@@ -20,4 +20,10 @@ test('slugify drops accents and symbols', () => {
 
 test('normalizeName collapses spaces', () => {
   assert.equal(normalizeName('  MARIO   ROSSI '), 'MARIO ROSSI')
+})
+
+test('titleCase normalizes case after spaces, hyphens and apostrophes', () => {
+  assert.equal(titleCase('MARIO R.'), 'Mario R.')
+  assert.equal(titleCase('anna-maria d\'ANGELO'), 'Anna-Maria D\'Angelo')
+  assert.equal(titleCase('NICOLÒ è'), 'Nicolò È')
 })

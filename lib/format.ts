@@ -29,3 +29,8 @@ export function slugify(text: string) {
 
 // Full names as stored in member.full_name: trimmed, single spaces
 export const normalizeName = (name: string) => name.trim().replace(/\s+/g, ' ')
+
+// "MARIO ROSSI" / "mario rossi" -> "Mario Rossi"; also after hyphens and apostrophes ("anna-maria",
+// "D'ANGELO" -> "Anna-Maria", "D'Angelo")
+export const titleCase = (text: string) =>
+  text.toLocaleLowerCase('it-IT').replace(/(^|[\s'’-])(\p{L})/gu, (_, sep: string, letter: string) => sep + letter.toLocaleUpperCase('it-IT'))
