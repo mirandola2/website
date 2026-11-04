@@ -76,5 +76,5 @@ export const utilityItems: UtilityItem[] = [
   { label: 'Traduttore Morse', href: '/morse', icon: BroadcastIcon },
   { label: 'Generatore Alci', href: '/alci', icon: CardsThreeIcon },
   { label: 'Archivio Totem', href: '/totem', icon: PawPrintIcon },
-  { label: 'Tabù (area capi)', href: '/tabu', icon: LockKeyIcon },
+  { label: 'Tabù', href: '/tabu', icon: LockKeyIcon },
 ]
