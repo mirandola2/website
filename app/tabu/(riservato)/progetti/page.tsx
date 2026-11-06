@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { requireLeader } from '@/lib/dal'
 import { getProjectsForYear, NO_YEAR, resolveYear } from '@/lib/tabu'
-import { filledSentence, firstName, formatDate } from '@/lib/format'
+import { filledSentence, formatDate } from '@/lib/format'
 import { splitStaff, staffColors, staffLabels } from '@/lib/staff'
 import StaffAvatar from '@/components/tabu/StaffAvatar'
 import ProjectView from '@/components/tabu/ProjectView'
@@ -50,15 +50,15 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
       <p className="opacity-70">{filledSentence(written.length, rows.length, year.id.replace('-', '/20'))}</p>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {written.map(({ leaderId, nome, img, staff, project }) => (
+        {written.map(({ memberCode, nome, shortName, img, staff, project }) => (
           <ProjectDialog
-            key={leaderId}
-            title={`Progetto di ${firstName(nome)}`}
+            key={memberCode}
+            title={`Progetto di ${shortName}`}
             trigger={
               <div className="card-body flex-row items-center gap-4 p-4">
                 <StaffAvatar img={img} name={nome} size={56} />
                 <div className="space-y-1">
-                  <h2 className="text-lg font-bold text-primary">{firstName(nome)}</h2>
+                  <h2 className="text-lg font-bold text-primary">{shortName}</h2>
                   <div className="flex flex-wrap gap-1">
                     <StaffBadges staff={staff} />
                   </div>
@@ -70,7 +70,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
             <header className="flex items-center gap-4 mb-4 pe-8">
               <StaffAvatar img={img} name={nome} size={56} />
               <div>
-                <h2 className="text-2xl font-bold text-primary">{firstName(nome)}</h2>
+                <h2 className="text-2xl font-bold text-primary">{shortName}</h2>
                 <p className="text-sm opacity-70">
                   Progetto del Capo {year.id.replace('-', '/20')} · {formatDate(project.updatedAt)}
                 </p>
@@ -87,9 +87,9 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
             <h2 className="card-title">Non ancora compilato</h2>
             <ul className="flex flex-wrap gap-3">
               {missing.map(r => (
-                <li key={r.leaderId} className="flex items-center gap-2 text-sm">
+                <li key={r.memberCode} className="flex items-center gap-2 text-sm">
                   <StaffAvatar img={r.img} name={r.nome} size={32} />
-                  {firstName(r.nome)}
+                  {r.shortName}
                 </li>
               ))}
             </ul>

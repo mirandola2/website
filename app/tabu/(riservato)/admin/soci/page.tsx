@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { count } from 'drizzle-orm'
+import { count, isNotNull } from 'drizzle-orm'
 import { DownloadSimpleIcon } from '@phosphor-icons/react/ssr'
 import { db } from '@/lib/db'
 import { requireAdmin } from '@/lib/dal'
@@ -17,7 +17,7 @@ const template = `data:text/csv;charset=utf-8,${encodeURIComponent(`${header}\n$
 // Personal data: the page only shows how many members there are, never the rows
 export default async function AdminSociPage() {
   await requireAdmin()
-  const [{ n }] = await db.select({ n: count() }).from(member)
+  const [{ n }] = await db.select({ n: count() }).from(member).where(isNotNull(member.birthday))
 
   return (
     <div className="space-y-6">
@@ -66,7 +66,7 @@ export default async function AdminSociPage() {
           <ActionForm action={importMembers} submitLabel="Importa" confirm="Importare il file?">
             <div className="flex flex-col items-start gap-3">
               <input type="file" name="file" accept=".csv,text/csv" required className="file-input w-full max-w-md" aria-label="File CSV" />
-              <Checkbox name="replace" label="Sostituisci l’elenco intero: chi non è nel file viene cancellato" />
+              <Checkbox name="replace" label="Sostituisci l’elenco intero: chi non è nel file viene cancellato (tranne capi e RS dello staff)" />
             </div>
           </ActionForm>
         </div>

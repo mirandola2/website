@@ -2,7 +2,24 @@ const dateFormat = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'lo
 
 export const formatDate = (date: Date) => dateFormat.format(date)
 
+// member.birthday 'YYYY-MM-DD' -> '14/03/2003'
+export const formatBirthday = (birthday: string) => birthday.split('-').reverse().join('/')
+
 export const firstName = (nome: string) => nome.split(' ')[0]
+
+// How to call each leader in a list: the first name, plus the initial of the surname when another
+// one has the same first name ("Luca M.", "Luca T."), or the full name when even that is the same
+export function shortNames(names: string[]) {
+  const count = (list: string[]) => list.reduce((m, n) => m.set(n, (m.get(n) ?? 0) + 1), new Map<string, number>())
+  const first = names.map(firstName)
+  const firstCount = count(first)
+  const initial = names.map((n, i) => {
+    const rest = n.slice(first[i].length).trim()
+    return rest ? `${first[i]} ${rest[0]}.` : n
+  })
+  const initialCount = count(initial)
+  return names.map((n, i) => (firstCount.get(first[i]) === 1 ? first[i] : initialCount.get(initial[i]) === 1 ? initial[i] : n))
+}
 
 // "1 capo su 5 ha compilato…" / "3 capi su 5 hanno compilato…"
 export const filledSentence = (filled: number, total: number, year: string) =>

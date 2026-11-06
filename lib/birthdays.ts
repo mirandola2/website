@@ -38,6 +38,15 @@ export function daysUntilBirthday(birthday: string, today: string) {
   return Math.round((next - start) / DAY_MS)
 }
 
+// The 'MM-DD' range (as in member.birthday) that holds every birthday of the next `days` days from
+// `today`, for the database query: one day more than needed, so that Feb 29 birthdays (celebrated
+// on Feb 28 in non-leap years) are always in. `from` > `to` when it spans New Year.
+export function birthdayWindow(today: string, days: number) {
+  const [year, month, day] = today.split('-').map(Number)
+  const end = new Date(Date.UTC(year, month - 1, day) + (days + 1) * DAY_MS)
+  return { from: today.slice(5), to: end.toISOString().slice(5, 10) }
+}
+
 // Only the first name and the initial of the next word leave the server, as with the old Worker
 export function upcomingBirthdays(
   members: { fullName: string; birthday: string }[],

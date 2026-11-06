@@ -2,6 +2,7 @@ import 'server-only'
 import { and, asc, count, desc, eq, isNotNull, isNull, or, sql } from 'drizzle-orm'
 import { db } from './db'
 import { link, media, member, scoutYear as scoutYearTable, staffMember, totem, yearProject } from '@/db/schema'
+import { shortNames } from './format'
 import { normalizeAnswers, normalizeTemplate, type ProjectTemplate } from './project'
 import { scoutYearOf } from './scout-year'
 
@@ -42,20 +43,21 @@ export async function resolveYear(requested: string | undefined) {
   return { year, visible }
 }
 
-export async function getProject(staffMemberId: number, year: YearSetting) {
+export async function getProject(memberCode: string, year: YearSetting) {
   const [project] = await db
     .select()
     .from(yearProject)
-    .where(and(eq(yearProject.staffMemberId, staffMemberId), eq(yearProject.scoutYear, year.id)))
+    .where(and(eq(yearProject.memberCode, memberCode), eq(yearProject.scoutYear, year.id)))
   return project ? { ...project, sections: normalizeAnswers(year.template, project.sections) } : null
 }
 
 // Every leader with their project for the year (null when not written yet), plus the projects of
-// whoever has since left the staff or lost their login: a written project is always listed
+// whoever has since left the staff or lost their login: a written project is always listed.
+// `shortName` tells apart leaders with the same first name.
 export async function getProjectsForYear(year: YearSetting) {
   const rows = await db
     .select({
-      leaderId: staffMember.id,
+      memberCode: staffMember.memberCode,
       nome: staffMember.nome,
       img: staffMember.img,
       staff: staffMember.staff,
@@ -63,16 +65,19 @@ export async function getProjectsForYear(year: YearSetting) {
       updatedAt: yearProject.updatedAt,
     })
     .from(staffMember)
-    .leftJoin(yearProject, and(eq(yearProject.staffMemberId, staffMember.id), eq(yearProject.scoutYear, year.id)))
+    .leftJoin(yearProject, and(eq(yearProject.memberCode, staffMember.memberCode), eq(yearProject.scoutYear, year.id)))
     .where(or(loginLeaders, isNotNull(yearProject.id)))
-    .orderBy(asc(staffMember.position), asc(staffMember.id))
-  return rows.map(({ sections, updatedAt, ...leader }) => ({
+    .orderBy(asc(staffMember.position), asc(staffMember.memberCode))
+  const names = shortNames(rows.map(r => r.nome))
+  return rows.map(({ sections, updatedAt, ...leader }, i) => ({
     ...leader,
+    shortName: names[i],
     project: updatedAt ? { sections: normalizeAnswers(year.template, sections), updatedAt } : null,
   }))
 }
 
-// Projects written per year (admin: a year's template applies to all of them)
+// Projects written per year (admin: a year's template applies to all of them). Reads the index
+// year_project_scout_year_idx, not the projects.
 export async function countProjectsByYear() {
   const rows = await db.select({ year: yearProject.scoutYear, n: count() }).from(yearProject).groupBy(yearProject.scoutYear)
   return new Map(rows.map(r => [r.year, r.n]))
@@ -85,12 +90,13 @@ export async function getDashboardStats(scoutYear: string) {
     db
       .select({ n: count() })
       .from(yearProject)
-      .innerJoin(staffMember, eq(staffMember.id, yearProject.staffMemberId))
+      .innerJoin(staffMember, eq(staffMember.memberCode, yearProject.memberCode))
       .where(and(eq(yearProject.scoutYear, scoutYear), loginLeaders)),
+    // The last 3 of the year straight from the index (scout_year, updated_at)
     db
-      .select({ nome: staffMember.nome, img: staffMember.img, updatedAt: yearProject.updatedAt })
+      .select({ memberCode: staffMember.memberCode, nome: staffMember.nome, img: staffMember.img, updatedAt: yearProject.updatedAt })
       .from(yearProject)
-      .innerJoin(staffMember, eq(staffMember.id, yearProject.staffMemberId))
+      .innerJoin(staffMember, eq(staffMember.memberCode, yearProject.memberCode))
       .where(eq(yearProject.scoutYear, scoutYear))
       .orderBy(desc(yearProject.updatedAt))
       .limit(3),
@@ -107,7 +113,8 @@ export async function getAdminCounts() {
     db.select({ n: count() }).from(media),
     db.select({ n: count() }).from(link),
     db.select({ n: count() }).from(totem),
-    db.select({ n: count() }).from(member),
+    // Placeholders of staff without a code are not members
+    db.select({ n: count() }).from(member).where(isNotNull(member.birthday)),
   ])
   return { staff: staff.n, withEmail: staff.leaders ?? 0, media: mediaRows.n, links: linkRows.n, totem: totemRows.n, members: memberRows.n }
 }

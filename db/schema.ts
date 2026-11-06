@@ -14,13 +14,24 @@ export const totem = sqliteTable('totem', {
   year: text().notNull(),
 })
 
-// Migrated from the Worker's D1 `data` table. Personal data: never exposed as is.
-export const member = sqliteTable('member', {
-  memberCode: text().primaryKey(),
-  fullName: text().notNull(),
-  // YYYY-MM-DD
-  birthday: text().notNull(),
-})
+
+// Personal data, never exposed as is. Also the parent of staff_member: every staff row is a member.
+export const member = sqliteTable(
+  'member',
+  {
+    // Digits only; `X-<slug>` for the placeholder of a staff row without a real code (lib/member-code.ts)
+    memberCode: text().primaryKey(),
+    fullName: text().notNull(),
+    // YYYY-MM-DD; null only on placeholders
+    birthday: text(),
+  },
+  t => [
+    // Codice socio search (lib/data.ts findMembersByName): the query must use the same expression
+    index('member_full_name_idx').on(sql`lower(${t.fullName})`),
+    // Upcoming birthdays by month and day (lib/data.ts getMemberBirthdays): 'MM-DD'
+    index('member_birthday_md_idx').on(sql`substr(${t.birthday}, 6)`),
+  ],
+)
 
 // Imported once from the old content/_capi.csv: leaders (coca = 1) and RS in service (coca = 0), shown in `position` order.
 // Only leaders can have an email, so RS can never log in. The email (lowercase) is the login
@@ -28,7 +39,13 @@ export const member = sqliteTable('member', {
 export const staffMember = sqliteTable(
   'staff_member',
   {
-    id: integer().primaryKey({ autoIncrement: true }),
+    // The person's member code: one row per person, whatever their name (homonyms included). Who
+    // has no real code gets a placeholder member row (lib/member-code.ts). The admin can correct
+    // it: the projects follow (ON UPDATE CASCADE).
+    memberCode: text()
+      .primaryKey()
+      .references(() => member.memberCode, { onUpdate: 'cascade', onDelete: 'restrict' }),
+    // Readable handle for the scripts (set-leader, import-projects) and the photo file name
     slug: text().notNull().unique(),
     nome: text().notNull(),
     nomeCaccia: text(),
@@ -84,10 +101,10 @@ export const yearProject = sqliteTable(
   'year_project',
   {
     id: integer().primaryKey({ autoIncrement: true }),
-    staffMemberId: integer()
+    memberCode: text()
       .notNull()
       // Projects are never deleted: the database refuses to delete a staff row that has any
-      .references(() => staffMember.id, { onDelete: 'restrict' }),
+      .references(() => staffMember.memberCode, { onUpdate: 'cascade', onDelete: 'restrict' }),
     // '2026-27': the year's template is in scout_year
     scoutYear: text()
       .notNull()
@@ -95,7 +112,11 @@ export const yearProject = sqliteTable(
     sections: text({ mode: 'json' }).$type<ProjectAnswers>().notNull().default(sql`'{}'`),
     updatedAt: integer({ mode: 'timestamp_ms' }).notNull(),
   },
-  t => [unique().on(t.staffMemberId, t.scoutYear)],
+  t => [
+    unique().on(t.memberCode, t.scoutYear),
+    // A year's projects, most recent first (Tabù dashboard, counts per year)
+    index('year_project_scout_year_idx').on(t.scoutYear, t.updatedAt),
+  ],
 )
 
 // The scout years of the Progetto del Capo, added by admins (lib/tabu.ts getYearSettings): the
@@ -173,8 +194,13 @@ export const verification = sqliteTable(
 )
 
 // Fixed-window counters for the public actions (lib/rate-limit.ts), one row per action and IP
-export const rateLimit = sqliteTable('rate_limit', {
-  key: text().primaryKey(),
-  count: integer().notNull(),
-  resetAt: integer({ mode: 'timestamp_ms' }).notNull(),
-})
+export const rateLimit = sqliteTable(
+  'rate_limit',
+  {
+    key: text().primaryKey(),
+    count: integer().notNull(),
+    resetAt: integer({ mode: 'timestamp_ms' }).notNull(),
+  },
+  // Expired windows are deleted on every hit
+  t => [index('rate_limit_reset_at_idx').on(t.resetAt)],
+)

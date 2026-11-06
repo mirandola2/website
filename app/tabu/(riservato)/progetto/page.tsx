@@ -23,7 +23,7 @@ export default async function MyProjectPage({ searchParams }: { searchParams: Pr
       </div>
     )
   }
-  const project = await getProject(leader.id, year)
+  const project = await getProject(leader.memberCode, year)
   const answers = project?.sections ?? normalizeAnswers(year.template, null)
 
   return (

@@ -15,8 +15,10 @@ const exports: Record<string, () => Promise<object[]>> = {
         .select()
         .from(staffMember)
         .where(isNull(staffMember.deletedAt))
-        .orderBy(asc(staffMember.position), asc(staffMember.id))
+        .orderBy(asc(staffMember.position), asc(staffMember.memberCode))
     ).map(r => ({
+      // The key of the row: the importer updates by it (placeholders included)
+      memberCode: r.memberCode,
       nome: r.nome,
       nomeCaccia: r.nomeCaccia,
       ruolo: r.ruolo,

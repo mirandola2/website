@@ -9,6 +9,7 @@
     "lint": "eslint",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "db:migrate:prod": "DRIZZLE_ENV=production drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "db:import-csv": "tsx scripts/import-csv.mts",
     "db:import-projects": "tsx scripts/import-projects.mts",

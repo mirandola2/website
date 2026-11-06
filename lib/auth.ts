@@ -35,6 +35,10 @@ export const auth = betterAuth({
   // BETTER_AUTH_URL is the apex domain: without www here, POSTs from www.mirandola2.it (sign-out) get 403 INVALID_ORIGIN
   trustedOrigins: ['https://www.mirandola2.it'],
   onAPIError: { errorURL: '/tabu/login/' },
+  // The session is also kept in a signed cookie for 5 minutes, saving the session and user reads on
+  // every Tabù page. Removing a leader still takes effect at once: getLeader() (lib/dal.ts) checks
+  // their staff row on every request.
+  session: { cookieCache: { enabled: true, maxAge: 5 * 60 } },
   // next.config.ts has trailingSlash: true, so /api/auth/x is redirected to /api/auth/x/
   advanced: { skipTrailingSlashes: true },
   databaseHooks: {

@@ -258,27 +258,33 @@ I dati che cambiano nel tempo sono in un database SQLite ospitato gratuitamente 
 |---|---|---|
 | `totem` | nomi totem | pagina `/totem` |
 | `member` | codici socio, nomi e date di nascita (dati personali!) | `CodiceSocio`, `/api/birthdays` (solo nome e iniziale) |
-| `staff_member` | capi (`coca = 1`) e RS in servizio (`coca = 0`) | `<Staff />` |
+| `staff_member` | capi (`coca = 1`) e RS in servizio (`coca = 0`), identificati dal codice socio | `<Staff />`, Tabù |
 | `media` | link alle raccolte di foto e video | `<LnkYearGrid />` |
 | `link` | materiali e link, con categoria e tipo (icona) | `<LinkList />` (pagina `/materiale`) |
-| `year_project` | Progetto del Capo di ogni capo, per anno: le risposte, per area e domanda del modello dell'anno | Tabù |
+| `year_project` | Progetto del Capo di ogni capo (per codice socio), per anno: le risposte, per area e domanda del modello dell'anno | Tabù |
 | `scout_year` | anni del Progetto del Capo, aggiunti dagli admin: modello (aree × domande), visibile, attivo | Tabù |
 | `user`, `session`, `account`, `verification` | accessi al Tabù (gestite da Better Auth) | Tabù |
 
-Le letture delle pagine pubbliche sono in `lib/data.ts` e sono in cache: le pagine restano statiche e vengono rigenerate solo quando una modifica chiama `revalidateTag`.
+Le letture delle pagine pubbliche sono in `lib/data.ts` e sono in cache: le pagine restano statiche e vengono rigenerate solo quando una modifica dal sito chiama `revalidateTag` (le modifiche fatte fuori dal sito, con gli script o la shell di Turso, compaiono entro un giorno).
+
+Turso conta le righe lette, anche quelle solo scorse per trovare le altre: le query frequenti usano un indice (ricerca del codice socio per nome, compleanni per mese e giorno, progetti per anno), e una query nuova si controlla con `EXPLAIN QUERY PLAN` in `sqlite3 local.db` (`SCAN` = tutta la tabella, `SEARCH` = solo le righe che servono).
 
 Comandi utili:
 
 ```sh
 npm run db:generate                      # dopo aver modificato db/schema.ts: crea una nuova migrazione
-npm run db:migrate                       # applica le migrazioni al database di TURSO_DATABASE_URL
+npm run db:migrate                       # applica le migrazioni a local.db (.env.local)
+npm run db:migrate:prod                  # applica le migrazioni al database online (shell o .env)
 npm run db:studio                        # interfaccia web per guardare e modificare i dati
-npm run db:import-csv -- staff <file>    # importa/aggiorna i capi da un CSV (l'export di Admin → Staff)
+npm run db:import-csv -- staff <file>    # importa/aggiorna i capi da un CSV (l'export di Admin → Staff), per codice socio
 npm run db:import-csv -- media <file>    # sostituisce i link foto/video con un CSV (l'export di Admin → Foto e video)
 npm run db:set-leader -- <slug> <email> [--admin]   # email di accesso al Tabù di un capo
 ```
 
 Note sui capi (`staff_member`):
+
+- La chiave è il codice socio (`member_code`, collegato a `member`): ogni persona ha una sola riga anche se ha lo stesso nome di un'altra, e i suoi progetti sono legati al codice. Chi non ha un codice socio (es. un assistente ecclesiastico non censito) ne ha uno provvisorio `X-<slug>`, con una riga in `member` senza data di nascita: in *Admin → Staff* compare come *senza codice socio* e il codice vero si scrive nella sua scheda (i progetti lo seguono). Aggiungendo una persona senza codice, si usa quello dell'unico socio con lo stesso nome; con più soci omonimi bisogna scriverlo. Chi viene eliminato e poi aggiunto di nuovo con lo stesso codice ritrova la sua riga e i suoi progetti.
+- I soci collegati allo staff non vengono cancellati dall'import dei codici socio con *Sostituisci l'elenco intero*.
 
 - Il nome mostrato dipende dalla pagina: nelle pagine con `coca` si vedono nome e cognome; nelle pagine L/C (`staff == {L, C}`) solo il `nomeCaccia`, ovvero il personaggio interpretato dai capi in LC (non il nome Totem), in modo da mantenere i capi anonimi ai bambini; nelle altre pagine solo il nome di battesimo.
 - Se nel campo `ruolo` è presente una `|`, il contenuto antecedente verrà mostrato quando `staff == *`, il contenuto successivo negli altri casi. 
@@ -355,18 +361,20 @@ turso db tokens create <nome-db>                     # → TURSO_AUTH_TOKEN
 
 ### 2. Tabelle e dati
 
-In un terminale, dalla cartella del sito, si puntano gli script al database online. Le variabili impostate nella shell hanno la precedenza su `.env.local`: ogni script stampa per prima cosa `Database: <host>`, controllare che sia quello di Turso e non `file:local.db`.
+In un terminale, dalla cartella del sito, si puntano gli script al database online. Le variabili impostate nella shell hanno la precedenza su `.env.local`: ogni script stampa per prima cosa `Database: <host>`, controllare che sia quello di Turso e non `file:local.db`. Le migrazioni online si applicano con `db:migrate:prod` (`db:migrate` va sempre su `local.db`).
 
 ```sh
 export TURSO_DATABASE_URL="libsql://<nome-db>-<organizzazione>.turso.io"
 export TURSO_AUTH_TOKEN="<token>"
 
-npm run db:migrate                          # crea tutte le tabelle
-npm run db:import-csv -- staff staff.csv    # capi e RS, con email e admin (export di Admin → Staff)
+npm run db:migrate:prod                     # crea tutte le tabelle
+# prima i codici socio: lo staff è collegato ai soci (stesso file di Admin → Codici socio, da caricare dal Tabù
+# dopo il passo 3, oppure con la shell di Turso); poi lo staff
+npm run db:import-csv -- staff staff.csv    # capi e RS, con codice socio, email e admin (export di Admin → Staff)
 npm run db:import-csv -- media media.csv    # link foto e video (export di Admin → Foto e video)
 ```
 
-- **Ripetere gli import**: `import-csv -- media` sostituisce tutte le righe; `import-csv -- staff` aggiorna i capi per nome e mantiene email, admin e foto caricate.
+- **Ripetere gli import**: `import-csv -- media` sostituisce tutte le righe; `import-csv -- staff` aggiorna i capi per codice socio (colonna `memberCode` dell'export; senza, lo cerca per nome e si ferma sugli omonimi) e mantiene email, admin e foto caricate. I codici socio non ancora importati diventano provvisori.
 - **Il resto si inserisce dal Tabù**, una volta entrati come admin: i codici socio e i compleanni da *Admin → Codici socio e compleanni* (file CSV), i nomi totem da *Admin → Totem*, materiali e link da *Admin → Materiali e link*.
 
 ### 3. Primo admin

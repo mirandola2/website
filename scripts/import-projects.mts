@@ -53,7 +53,7 @@ const questionByLabel = new Map(template.questions.map(q => [label(q.label), q])
 // --- Matching ---
 
 const leaders = await db
-  .select({ id: staffMember.id, slug: staffMember.slug, nome: staffMember.nome, nomeCaccia: staffMember.nomeCaccia })
+  .select({ memberCode: staffMember.memberCode, slug: staffMember.slug, nome: staffMember.nome, nomeCaccia: staffMember.nomeCaccia })
   .from(staffMember)
   .where(and(eq(staffMember.coca, true), isNull(staffMember.deletedAt)))
 const leaderBySlug = new Map(leaders.map(l => [l.slug, l]))
@@ -69,7 +69,7 @@ function distance(a: string, b: string) {
 }
 
 const unresolved: string[] = []
-const usedIds = new Map<number, string>()
+const usedIds = new Map<string, string>()
 const matched = source.persone.map(p => {
   const persona = String(p.persona ?? '')
   const mapped = maps.get(persona)
@@ -86,9 +86,9 @@ const matched = source.persone.map(p => {
     unresolved.push(persona)
   }
   if (leader) {
-    const other = usedIds.get(leader.id)
-    if (other) throw new Error(`"${persona}" and "${other}" both match staff #${leader.id} (${leader.slug})`)
-    usedIds.set(leader.id, persona)
+    const other = usedIds.get(leader.memberCode)
+    if (other) throw new Error(`"${persona}" and "${other}" both match staff ${leader.memberCode} (${leader.slug})`)
+    usedIds.set(leader.memberCode, persona)
   }
   return { p, persona, leader, status }
 })
@@ -97,7 +97,7 @@ console.log(`\nMatching (${source.persone.length} people in ${file}, ${leaders.l
 for (const m of matched)
   console.log(
     `  ${m.persona.padEnd(24)} "${String(m.p.nome ?? '')}"`.padEnd(52) +
-      (m.leader ? `→ #${String(m.leader.id).padEnd(3)} ${m.leader.slug.padEnd(24)} ${m.leader.nome}${m.leader.nomeCaccia ? ` (${m.leader.nomeCaccia})` : ''}  [${m.status}]` : `→ ${m.status}`),
+      (m.leader ? `→ ${m.leader.memberCode.padEnd(10)} ${m.leader.slug.padEnd(24)} ${m.leader.nome}${m.leader.nomeCaccia ? ` (${m.leader.nomeCaccia})` : ''}  [${m.status}]` : `→ ${m.status}`),
   )
 for (const m of matched) if (typeof m.p._fonte === 'string') console.log(`  note on ${m.persona}: ${m.p._fonte}`)
 
@@ -148,7 +148,7 @@ const projects = matched.flatMap(({ p, persona, leader }) => {
 })
 
 const existing = new Set(
-  (await db.select({ id: yearProject.staffMemberId }).from(yearProject).where(eq(yearProject.scoutYear, yearId))).map(r => r.id),
+  (await db.select({ code: yearProject.memberCode }).from(yearProject).where(eq(yearProject.scoutYear, yearId))).map(r => r.code),
 )
 
 console.log(`\nProjects (${yearId}, updated_at ${updatedAt.toISOString()}):`)
@@ -156,7 +156,7 @@ for (const { persona, leader, sections } of projects) {
   const values = Object.values(sections).flatMap(a => Object.entries(a))
   const texts = values.filter(([, v]) => typeof v === 'string' && v).length
   const scores = values.filter(([, v]) => typeof v === 'number' && v).length
-  console.log(`  ${existing.has(leader.id) ? 'update' : 'insert'}  ${persona.padEnd(24)} ${texts} texts, ${scores} scores filled`)
+  console.log(`  ${existing.has(leader.memberCode) ? 'update' : 'insert'}  ${persona.padEnd(24)} ${texts} texts, ${scores} scores filled`)
 }
 console.log(issues.length ? `\nTruncated or dropped:\n${issues.map(i => `  ${i}`).join('\n')}` : '\nTruncated or dropped: none')
 
@@ -174,9 +174,9 @@ await db.transaction(async tx => {
   for (const { leader, sections } of projects) {
     await tx
       .insert(yearProject)
-      .values({ staffMemberId: leader.id, scoutYear: yearId, sections, updatedAt })
+      .values({ memberCode: leader.memberCode, scoutYear: yearId, sections, updatedAt })
       .onConflictDoUpdate({
-        target: [yearProject.staffMemberId, yearProject.scoutYear],
+        target: [yearProject.memberCode, yearProject.scoutYear],
         set: { sections, updatedAt },
       })
   }

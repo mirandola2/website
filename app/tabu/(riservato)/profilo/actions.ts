@@ -27,7 +27,7 @@ export async function updateMyDesc(_prev: ActionResult, formData: FormData): Pro
   const parsed = DescSchema.safeParse({ desc: formData.get('desc') ?? '' })
   if (!parsed.success) return { ok: false, message: parsed.error.issues[0].message }
 
-  await db.update(staffMember).set({ desc: parsed.data.desc }).where(eq(staffMember.id, leader.id))
+  await db.update(staffMember).set({ desc: parsed.data.desc }).where(eq(staffMember.memberCode, leader.memberCode))
   revalidateTag('staff', 'max')
   revalidatePath('/tabu', 'layout')
   return { ok: true, message: 'Descrizione salvata.' }

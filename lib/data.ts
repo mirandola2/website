@@ -1,7 +1,8 @@
 import 'server-only'
 import { unstable_cache } from 'next/cache'
-import { asc, isNull, sql } from 'drizzle-orm'
+import { and, asc, isNotNull, isNull, or, sql } from 'drizzle-orm'
 import { db } from './db'
+import { birthdayWindow } from './birthdays'
 import { normalizeName } from './format'
 import { link, media, member, staffMember, totem } from '@/db/schema'
 
@@ -10,8 +11,9 @@ import { link, media, member, staffMember, totem } from '@/db/schema'
 // birthday...) here unless the caller filters them out.
 //
 // The cache outlives builds (.next/cache, and Vercel's build cache), so edits made outside the
-// site (import scripts, Turso shell) would never show up: REVALIDATE refreshes them within an hour.
-const REVALIDATE = 3600
+// site (import scripts, Turso shell) would never show up: REVALIDATE refreshes them within a day.
+// Every edit from the site is immediate anyway, so a longer time only saves database reads.
+const REVALIDATE = 86400
 
 export const getTotem = unstable_cache(
   () =>
@@ -41,7 +43,7 @@ export const getStaffMembers = unstable_cache(
       })
       .from(staffMember)
       .where(isNull(staffMember.deletedAt))
-      .orderBy(asc(staffMember.position), asc(staffMember.id)),
+      .orderBy(asc(staffMember.position), asc(staffMember.memberCode)),
   ['staff'],
   { tags: ['staff'], revalidate: REVALIDATE },
 )
@@ -66,16 +68,28 @@ export const getLinks = unstable_cache(
   { tags: ['links'], revalidate: REVALIDATE },
 )
 
-// Not cached: only the birthdays route reads it, and that route is cached as a whole
-export function getMemberBirthdays() {
-  return db.select({ fullName: member.fullName, birthday: member.birthday }).from(member)
+// Not cached: only the birthdays route reads it, and that route is cached as a whole. Only the
+// members whose 'MM-DD' falls in the window (index member_birthday_md_idx), not the whole table:
+// upcomingBirthdays() then keeps the exact ones.
+export async function getMemberBirthdays(today: string, days: number) {
+  const { from, to } = birthdayWindow(today, days)
+  const md = sql`substr(${member.birthday}, 6)`
+  // Over New Year the window is two ranges
+  const inWindow = from <= to ? sql`${md} BETWEEN ${from} AND ${to}` : or(sql`${md} >= ${from}`, sql`${md} <= ${to}`)
+  const rows = await db
+    .select({ fullName: member.fullName, birthday: member.birthday })
+    .from(member)
+    .where(and(isNotNull(member.birthday), inWindow))
+  return rows.flatMap(r => (r.birthday ? [{ fullName: r.fullName, birthday: r.birthday }] : []))
 }
 
 // Personal data, not cached: callers must check the session or the Token Magico first.
-// Matched on the whole name, ignoring case and extra spaces.
+// Matched on the whole name, ignoring case and extra spaces. The expression is the one of the
+// index member_full_name_idx, so only the matching rows are read. Placeholders (staff without a
+// real code) have no birthday and are left out.
 export function findMembersByName(name: string) {
   return db
-    .select({ name: member.fullName, code: member.memberCode, birthday: member.birthday })
+    .select({ name: member.fullName, code: member.memberCode, birthday: sql<string>`${member.birthday}` })
     .from(member)
-    .where(sql`lower(${member.fullName}) = lower(${normalizeName(name)})`)
+    .where(and(sql`lower(${member.fullName}) = lower(${normalizeName(name)})`, isNotNull(member.birthday)))
 }

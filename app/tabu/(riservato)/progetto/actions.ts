@@ -40,9 +40,9 @@ export async function saveYearProject(_prev: ActionResult, formData: FormData): 
   const updatedAt = new Date()
   await db
     .insert(yearProject)
-    .values({ staffMemberId: leader.id, scoutYear: year.id, sections, updatedAt })
+    .values({ memberCode: leader.memberCode, scoutYear: year.id, sections, updatedAt })
     .onConflictDoUpdate({
-      target: [yearProject.staffMemberId, yearProject.scoutYear],
+      target: [yearProject.memberCode, yearProject.scoutYear],
       set: { sections, updatedAt },
     })
 

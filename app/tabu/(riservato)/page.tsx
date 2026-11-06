@@ -2,15 +2,16 @@ import Link from 'next/link'
 import { ArrowRightIcon, NotebookIcon, UsersThreeIcon } from '@phosphor-icons/react/ssr'
 import { requireLeader } from '@/lib/dal'
 import { getDashboardStats, getProject, NO_YEAR, resolveYear } from '@/lib/tabu'
-import { filledSentence, firstName, formatDate, greeting } from '@/lib/format'
+import { filledSentence, firstName, formatDate, greeting, shortNames } from '@/lib/format'
 import StaffAvatar from '@/components/tabu/StaffAvatar'
 import MyMemberCode from '@/components/tabu/MyMemberCode'
 
 export default async function Dashboard() {
   const leader = await requireLeader()
   const { year } = await resolveYear(undefined)
-  const [project, stats] = year ? await Promise.all([getProject(leader.id, year), getDashboardStats(year.id)]) : [null, null]
+  const [project, stats] = year ? await Promise.all([getProject(leader.memberCode, year), getDashboardStats(year.id)]) : [null, null]
   const yearLabel = year?.id.replace('-', '/20')
+  const latestNames = shortNames(stats?.latest.map(p => p.nome) ?? [])
 
   return (
     <div className="space-y-6">
@@ -48,11 +49,11 @@ export default async function Dashboard() {
             <p>{stats ? filledSentence(stats.filled, stats.leaders, yearLabel!) : NO_YEAR}</p>
             {stats && stats.latest.length > 0 && (
               <ul className="space-y-2">
-                {stats.latest.map(p => (
-                  <li key={p.nome} className="flex items-center gap-2 text-sm">
+                {stats.latest.map((p, i) => (
+                  <li key={p.memberCode} className="flex items-center gap-2 text-sm">
                     <StaffAvatar img={p.img} name={p.nome} size={28} />
                     <span>
-                      {firstName(p.nome)} · {formatDate(p.updatedAt)}
+                      {latestNames[i]} · {formatDate(p.updatedAt)}
                     </span>
                   </li>
                 ))}
@@ -67,7 +68,7 @@ export default async function Dashboard() {
           </div>
         </section>
 
-        <MyMemberCode />
+        <MyMemberCode memberCode={leader.memberCode} />
       </div>
     </div>
   )

@@ -1,4 +1,5 @@
 import type { staffMember } from '@/db/schema'
+import { isPlaceholderCode } from '@/lib/member-code'
 import { isLcStaff } from '@/lib/staff'
 import { Checkbox, Field, TextArea } from './Field'
 
@@ -11,7 +12,7 @@ export default function StaffFields({ row }: { row?: Row }) {
 
   return (
     <>
-      {row && <input type="hidden" name="id" value={row.id} />}
+      {row && <input type="hidden" name="id" value={row.memberCode} />}
       {/* Access flags first and highlighted: they decide who can enter the Tabù and manage it */}
       <div className="flex flex-wrap gap-x-6 gap-y-1 rounded-box border border-base-300 bg-base-100 px-4 py-2 mb-2 font-bold">
         <Checkbox label="In Co.Ca. (capo)" name="coca" defaultChecked={row ? row.coca : true} />
@@ -22,6 +23,19 @@ export default function StaffFields({ row }: { row?: Row }) {
         <Field label="Nome di caccia (L/C)" name="nomeCaccia" defaultValue={row?.nomeCaccia} />
         <Field label="Staff" name="staff" defaultValue={row?.staff} required hint="L, C, E, G, N, CF, CC, CJ; doppi servizi: E|CJ" />
         <Field label="Ruolo" name="ruolo" defaultValue={row?.ruolo} hint="Uno per staff, con lo stesso ordine: Capo Reparto|Capo Gruppo" />
+        <Field
+          label="Codice socio"
+          name="memberCode"
+          defaultValue={row?.memberCode}
+          required={!!row}
+          hint={
+            !row
+              ? 'Vuoto: si usa quello del socio con lo stesso nome; senza soci con quel nome, uno provvisorio'
+              : isPlaceholderCode(row.memberCode)
+                ? 'Provvisorio: scrivi il codice socio vero (deve essere tra i soci)'
+                : 'Deve essere tra i soci. Cambiandolo, i progetti lo seguono'
+          }
+        />
         <Field label="Email di accesso" name="email" type="email" defaultValue={row?.email} hint="Solo capi in Co.Ca.: l'account Google con cui entra nel Tabù" />
       </div>
       {showDesc ? (

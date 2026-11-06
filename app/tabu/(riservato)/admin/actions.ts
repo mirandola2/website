@@ -1,11 +1,12 @@
 'use server'
 
 import { revalidatePath, revalidateTag } from 'next/cache'
-import { and, count, eq, isNull, max, ne, sql } from 'drizzle-orm'
+import { and, count, eq, isNotNull, isNull, max, ne, notInArray, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/lib/db'
 import { requireAdmin } from '@/lib/dal'
-import { slugify } from '@/lib/format'
+import { formatBirthday, normalizeName, slugify } from '@/lib/format'
+import { isPlaceholderCode, placeholderCode } from '@/lib/member-code'
 import { replaceStaffPhoto } from '@/lib/staff-photo'
 import { optionalText } from '@/lib/validation'
 import { parseMembersCsv } from '@/lib/members-csv'
@@ -38,9 +39,18 @@ function formId(formData: FormData) {
 
 // --- Staff ---
 
+// Rows are identified by their member code (the hidden `id` field of the forms)
+const memberCodeField = z.string().trim().min(1).max(100)
+function formCode(formData: FormData) {
+  const parsed = memberCodeField.safeParse(formData.get('id'))
+  return parsed.success ? parsed.data : null
+}
+
 const StaffSchema = z
   .object({
     id: z.string().optional(),
+    // Empty when adding: found from the name, or a placeholder (lib/member-code.ts)
+    memberCode: z.string().trim().max(100),
     nome: requiredText(100, 'Nome'),
     nomeCaccia: optionalText(100),
     ruolo: z.string().trim().max(200),
@@ -60,57 +70,125 @@ const StaffSchema = z
     isAdmin: z.literal('on').optional(),
   })
   .refine(v => v.coca || !v.email, { message: 'Un RS in servizio (non in Co.Ca.) non può avere un’email di accesso.' })
+  // A real code is digits only; a placeholder can only be kept, never typed
+  .refine(v => !v.memberCode || /^\d{1,10}$/.test(v.memberCode) || v.memberCode === v.id, {
+    message: 'Codice socio: solo cifre.',
+  })
+
+// Why `code` can't become the code of a staff row (null if it can). `deletedOwner` is set when the
+// code belongs to a removed row, which adding the same person restores.
+async function checkMemberCode(code: string) {
+  const [socio] = await db.select({ code: member.memberCode }).from(member).where(eq(member.memberCode, code))
+  if (!socio) return { error: `Il codice socio ${code} non è tra i soci: aggiorna prima l’elenco in Codici socio.` }
+  const [owner] = await db
+    .select({ nome: staffMember.nome, deletedAt: staffMember.deletedAt })
+    .from(staffMember)
+    .where(eq(staffMember.memberCode, code))
+  if (owner && !owner.deletedAt) return { error: `Il codice socio ${code} è già di ${owner.nome}.` }
+  return { error: null, deleted: !!owner }
+}
+
+// The code of a new row without one: the only member with exactly that name and not already in
+// the staff; with homonyms the admin must choose; with none, a placeholder
+async function codeFromName(nome: string, slug: string): Promise<{ code: string } | { error: string }> {
+  const candidates = await db
+    .select({ code: member.memberCode, birthday: member.birthday })
+    .from(member)
+    .where(and(sql`lower(${member.fullName}) = lower(${normalizeName(nome)})`, isNotNull(member.birthday)))
+  if (candidates.length > 1) {
+    const list = candidates.map(c => `${c.code} (nato/a il ${formatBirthday(c.birthday!)})`).join(', ')
+    return { error: `Ci sono più soci di nome ${nome}: ${list}. Scrivi il codice socio giusto.` }
+  }
+  if (candidates.length === 1) return { code: candidates[0].code }
+  return { code: placeholderCode(slug) }
+}
 
 export async function saveStaffMember(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   const admin = await requireAdmin()
   const parsed = StaffSchema.safeParse(Object.fromEntries(formData))
   if (!parsed.success) return fail(parsed.error)
-  const { id: rawId, coca, isAdmin, ...fields } = parsed.data
+  const { id: currentCode, memberCode: requested, coca, isAdmin, ...fields } = parsed.data
   const values = { ...fields, coca: !!coca, isAdmin: !!coca && !!isAdmin }
-  const rowId = rawId ? Number(rawId) : null
 
-  if (rowId === admin.id && (!values.isAdmin || values.email !== admin.email)) {
+  if (currentCode === admin.memberCode && (!values.isAdmin || values.email !== admin.email)) {
     return { ok: false, message: 'Non puoi togliere a te stesso l’accesso admin: chiedi a un altro admin.' }
   }
   if (values.email) {
     const [taken] = await db
       .select({ nome: staffMember.nome })
       .from(staffMember)
-      .where(and(eq(staffMember.email, values.email), rowId ? ne(staffMember.id, rowId) : undefined))
+      .where(and(eq(staffMember.email, values.email), currentCode ? ne(staffMember.memberCode, currentCode) : undefined))
     if (taken) return { ok: false, message: `Email già usata da ${taken.nome}.` }
   }
 
-  if (rowId) {
-    const rows = await db
-      .update(staffMember)
-      .set(values)
-      .where(and(eq(staffMember.id, rowId), isNull(staffMember.deletedAt)))
-      .returning({ id: staffMember.id })
-    return rows.length ? done('staff', 'Salvato.') : notFound
+  // Edit: a new code moves the row and its projects (ON UPDATE CASCADE)
+  if (currentCode) {
+    const code = requested || currentCode
+    if (code !== currentCode) {
+      const check = await checkMemberCode(code)
+      if (check.error) return { ok: false, message: check.error }
+      if (check.deleted) return { ok: false, message: `Il codice socio ${code} è di una persona eliminata dallo staff.` }
+    }
+    const updated = await db.transaction(async tx => {
+      const rows = await tx
+        .update(staffMember)
+        .set({ ...values, memberCode: code })
+        .where(and(eq(staffMember.memberCode, currentCode), isNull(staffMember.deletedAt)))
+        .returning({ code: staffMember.memberCode })
+      // The placeholder is no longer anyone's
+      if (rows.length && code !== currentCode && isPlaceholderCode(currentCode)) {
+        await tx.delete(member).where(eq(member.memberCode, currentCode))
+      }
+      return rows.length
+    })
+    return updated ? done('staff', 'Salvato.') : notFound
   }
+
   let slug = slugify(values.nome)
   const base = slug
-  for (let i = 2; (await db.select({ id: staffMember.id }).from(staffMember).where(eq(staffMember.slug, slug))).length; i++) {
+  for (let i = 2; (await db.select({ slug: staffMember.slug }).from(staffMember).where(eq(staffMember.slug, slug))).length; i++) {
     slug = `${base}-${i}`
   }
+  const resolved = requested ? { code: requested } : await codeFromName(values.nome, slug)
+  if ('error' in resolved) return { ok: false, message: resolved.error }
+  const code = resolved.code
+  const placeholder = isPlaceholderCode(code)
+  const check = placeholder ? { error: null, deleted: false } : await checkMemberCode(code)
+  if (check.error) return { ok: false, message: check.error }
+
   // New rows go last
   const [{ last }] = await db.select({ last: max(staffMember.position) }).from(staffMember)
-  await db.insert(staffMember).values({ ...values, slug, position: (last ?? 0) + 1 })
-  return done('staff', `Aggiunto ${values.nome}.`)
+  const position = (last ?? 0) + 1
+  // Someone removed and added again: same row, so their projects are theirs again
+  if (check.deleted) {
+    await db
+      .update(staffMember)
+      .set({ ...values, position, order: null, deletedAt: null })
+      .where(eq(staffMember.memberCode, code))
+    return done('staff', `${values.nome} è di nuovo nello staff, con i suoi progetti.`)
+  }
+  await db.transaction(async tx => {
+    if (placeholder) await tx.insert(member).values({ memberCode: code, fullName: values.nome, birthday: null })
+    await tx.insert(staffMember).values({ ...values, memberCode: code, slug, position })
+  })
+  return done(
+    'staff',
+    placeholder ? `Aggiunto ${values.nome}, senza codice socio: aggiungilo quando ce l’ha.` : `Aggiunto ${values.nome} (codice socio ${code}).`,
+  )
 }
 
-const OrderSchema = z.array(id).min(1)
+const OrderSchema = z.array(memberCodeField).min(1)
 
 // Drag and drop in /tabu/admin/staff: the main order (every row) or the Coca page one (leaders)
-export async function saveStaffOrder(kind: 'main' | 'coca', ids: number[]): Promise<ActionResult> {
+export async function saveStaffOrder(kind: 'main' | 'coca', codes: string[]): Promise<ActionResult> {
   await requireAdmin()
   if (kind !== 'main' && kind !== 'coca') return { ok: false, message: 'Ordine non valido.' }
-  const parsed = OrderSchema.safeParse(ids)
+  const parsed = OrderSchema.safeParse(codes)
   if (!parsed.success) return fail(parsed.error)
   const column = kind === 'main' ? 'position' : 'order'
   await db.transaction(async tx => {
-    for (const [i, rowId] of parsed.data.entries()) {
-      await tx.update(staffMember).set({ [column]: i + 1 }).where(eq(staffMember.id, rowId))
+    for (const [i, code] of parsed.data.entries()) {
+      await tx.update(staffMember).set({ [column]: i + 1 }).where(eq(staffMember.memberCode, code))
     }
   })
   return done('staff', 'Ordine salvato.')
@@ -124,16 +202,17 @@ export async function resetCocaOrder(): Promise<ActionResult> {
 }
 
 // Never a real delete: the row keeps its Progetti del Capo (and the database refuses to delete a
-// row that has any). It disappears from the site and the Tabù, and can't log in any more.
+// row that has any). It disappears from the site and the Tabù, and can't log in any more. Adding
+// the same member code again restores it.
 export async function deleteStaffMember(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   const admin = await requireAdmin()
-  const rowId = formId(formData)
-  if (rowId === admin.id) return { ok: false, message: 'Non puoi eliminare te stesso.' }
-  const [row] = rowId
+  const code = formCode(formData)
+  if (code === admin.memberCode) return { ok: false, message: 'Non puoi eliminare te stesso.' }
+  const [row] = code
     ? await db
         .update(staffMember)
         .set({ deletedAt: new Date(), email: null, isAdmin: false, order: null })
-        .where(and(eq(staffMember.id, rowId), isNull(staffMember.deletedAt)))
+        .where(and(eq(staffMember.memberCode, code), isNull(staffMember.deletedAt)))
         .returning({ nome: staffMember.nome })
     : []
   return row ? done('staff', `Eliminato ${row.nome}. I suoi progetti restano.`) : notFound
@@ -142,12 +221,12 @@ export async function deleteStaffMember(_prev: ActionResult, formData: FormData)
 // Any row's photo, RS included
 export async function uploadStaffPhotoAdmin(formData: FormData): Promise<ActionResult> {
   await requireAdmin()
-  const rowId = formId(formData)
-  const [row] = rowId
+  const code = formCode(formData)
+  const [row] = code
     ? await db
         .select()
         .from(staffMember)
-        .where(and(eq(staffMember.id, rowId), isNull(staffMember.deletedAt)))
+        .where(and(eq(staffMember.memberCode, code), isNull(staffMember.deletedAt)))
     : []
   return row ? replaceStaffPhoto(row, formData.get('photo')) : notFound
 }
@@ -387,7 +466,8 @@ export async function saveYearTemplate(_prev: ActionResult, formData: FormData):
 const MAX_CSV_BYTES = 1024 * 1024
 
 // Adds or updates every row of the CSV by member code; with "replace", whoever is not in the file is
-// deleted. One bad row and nothing is saved.
+// deleted, except the members of the staff (their rows are the key of staff_member). One bad row
+// and nothing is saved.
 export async function importMembers(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   await requireAdmin()
   const file = formData.get('file')
@@ -399,7 +479,7 @@ export async function importMembers(_prev: ActionResult, formData: FormData): Pr
 
   const [{ before }] = await db.select({ before: count() }).from(member)
   await db.transaction(async tx => {
-    if (replace) await tx.delete(member)
+    if (replace) await tx.delete(member).where(notInArray(member.memberCode, tx.select({ code: staffMember.memberCode }).from(staffMember)))
     // 3 values per row: well under SQLite's limit of variables per statement
     for (let i = 0; i < parsed.rows.length; i += 200) {
       await tx
@@ -418,10 +498,12 @@ export async function importMembers(_prev: ActionResult, formData: FormData): Pr
   revalidatePath('/tabu', 'layout')
   const rows = parsed.rows.length
   const added = after - before
+  // Staff members (placeholders included) that the file doesn't have
+  const kept = after - rows
   return {
     ok: true,
     message: replace
-      ? `Elenco sostituito: ${after} soci.`
+      ? `Elenco sostituito: ${rows} soci dal file${kept ? `, più ${kept} dello staff che non ci sono (restano perché sono capi o RS)` : ''}.`
       : `${rows === 1 ? 'Importata 1 riga' : `Importate ${rows} righe`}: ${added === 1 ? '1 socio nuovo' : `${added} soci nuovi`}, ${after} in totale.`,
   }
 }

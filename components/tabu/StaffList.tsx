@@ -5,7 +5,8 @@ import { ArrowCounterClockwiseIcon, DotsSixVerticalIcon, FloppyDiskIcon } from '
 import type { ActionResult } from './types'
 
 export interface StaffListRow {
-  id: number
+  // Member code
+  id: string
   // The collapsed line (avatar, name, badges) and what opening the row shows (form, photo, delete):
   // both rendered on the server
   summary: ReactNode
@@ -18,10 +19,10 @@ interface StaffListProps {
   // Every row, in the main order
   rows: StaffListRow[]
   // The leaders, in the Co.Ca. page order
-  cocaIds: number[]
+  cocaIds: string[]
   // The Co.Ca. page has an order of its own
   cocaCustom: boolean
-  saveOrder: (kind: Mode, ids: number[]) => Promise<ActionResult>
+  saveOrder: (kind: Mode, ids: string[]) => Promise<ActionResult>
   resetCocaOrder: () => Promise<ActionResult>
 }
 
@@ -36,11 +37,11 @@ function move<T>(list: T[], from: number, to: number) {
 // for the main order or the Co.Ca. page one, saved all at once.
 export default function StaffList({ rows, cocaIds, cocaCustom, saveOrder, resetCocaOrder }: StaffListProps) {
   const [mode, setMode] = useState<Mode | null>(null)
-  const [ids, setIds] = useState<number[]>([])
-  const [dragging, setDragging] = useState<number | null>(null)
+  const [ids, setIds] = useState<string[]>([])
+  const [dragging, setDragging] = useState<string | null>(null)
   const [result, setResult] = useState<ActionResult>(null)
   const [pending, startTransition] = useTransition()
-  const rowRefs = useRef(new Map<number, HTMLLIElement>())
+  const rowRefs = useRef(new Map<string, HTMLLIElement>())
   const byId = new Map(rows.map(r => [r.id, r]))
   const savedIds = mode === 'coca' ? cocaIds : rows.map(r => r.id)
   const changed = ids.some((id, i) => id !== savedIds[i])

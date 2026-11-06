@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { daysUntilBirthday, romeToday, upcomingBirthdays } from './birthdays'
+import { birthdayWindow, daysUntilBirthday, romeToday, upcomingBirthdays } from './birthdays'
 
 test('same day and later in the year', () => {
   assert.equal(daysUntilBirthday('2000-06-21', '2026-06-21'), 0)
@@ -44,4 +44,13 @@ test('upcoming list: window, order and exposed fields', () => {
     { name: 'Lorenzo', last_initial: 'M', t_minus: 2 },
     { name: 'Bianca', last_initial: 'Z', t_minus: 7 },
   ])
+})
+
+test('birthdayWindow covers the next days, one more for Feb 29', () => {
+  assert.deepEqual(birthdayWindow('2026-06-14', 7), { from: '06-14', to: '06-22' })
+  // Over New Year: from > to
+  assert.deepEqual(birthdayWindow('2026-12-28', 7), { from: '12-28', to: '01-05' })
+  // Non-leap year: Feb 29 (celebrated on Feb 28) is inside the range
+  const w = birthdayWindow('2026-02-21', 7)
+  assert.ok(w.from <= '02-29' && '02-29' <= w.to)
 })

@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { greeting, normalizeName, slugify, titleCase } from './format'
+import { greeting, normalizeName, shortNames, slugify, titleCase } from './format'
 
 test('greeting follows the time in Rome', () => {
   // CET (UTC+1) in winter
@@ -26,4 +26,12 @@ test('titleCase normalizes case after spaces, hyphens and apostrophes', () => {
   assert.equal(titleCase('MARIO R.'), 'Mario R.')
   assert.equal(titleCase('anna-maria d\'ANGELO'), 'Anna-Maria D\'Angelo')
   assert.equal(titleCase('NICOLÒ è'), 'Nicolò È')
+})
+
+test('shortNames tells apart leaders with the same first name', () => {
+  assert.deepEqual(shortNames(['Luca Meschieri', 'Luca Toselli', 'Giacomo Salici']), ['Luca M.', 'Luca T.', 'Giacomo'])
+  // Same initial: the full name
+  assert.deepEqual(shortNames(['Matteo Ba', 'Matteo Be', 'Anna']), ['Matteo Ba', 'Matteo Be', 'Anna'])
+  // Full homonyms stay the same (the avatar tells them apart)
+  assert.deepEqual(shortNames(['Anna Rossi', 'Anna Rossi']), ['Anna Rossi', 'Anna Rossi'])
 })
