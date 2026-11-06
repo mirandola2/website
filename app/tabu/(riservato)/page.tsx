@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import { ArrowRightIcon, NotebookIcon, UsersThreeIcon } from '@phosphor-icons/react/ssr'
 import { requireLeader } from '@/lib/dal'
+import { canReadProjects } from '@/lib/project'
+import { scoutYearOf } from '@/lib/scout-year'
 import { getDashboardStats, getProject, NO_YEAR, resolveYear } from '@/lib/tabu'
 import { filledSentence, firstName, formatDate, greeting, shortNames } from '@/lib/format'
 import StaffAvatar from '@/components/tabu/StaffAvatar'
@@ -9,7 +11,10 @@ import MyMemberCode from '@/components/tabu/MyMemberCode'
 export default async function Dashboard() {
   const leader = await requireLeader()
   const { year } = await resolveYear(undefined)
-  const [project, stats] = year ? await Promise.all([getProject(leader.memberCode, year), getDashboardStats(year.id)]) : [null, null]
+  const project = year && (await getProject(leader.memberCode, year))
+  // The others' projects of this year only if the leader can read them (lib/project.ts)
+  const readable = !!year && canReadProjects(year, new Set(project ? [year.id] : []), scoutYearOf())
+  const stats = year && readable ? await getDashboardStats(year.id) : null
   const yearLabel = year?.id.replace('-', '/20')
   const latestNames = shortNames(stats?.latest.map(p => p.nome) ?? [])
 
@@ -46,7 +51,13 @@ export default async function Dashboard() {
               <UsersThreeIcon size={24} weight="duotone" aria-hidden />
               Tutti i Progetti dei Capi
             </h2>
-            <p>{stats ? filledSentence(stats.filled, stats.leaders, yearLabel!) : NO_YEAR}</p>
+            <p>
+              {stats
+                ? filledSentence(stats.filled, stats.leaders, yearLabel!)
+                : year
+                  ? `I progetti del ${yearLabel} li leggono solo i capi che hanno scritto il proprio.`
+                  : NO_YEAR}
+            </p>
             {stats && stats.latest.length > 0 && (
               <ul className="space-y-2">
                 {stats.latest.map((p, i) => (

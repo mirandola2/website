@@ -3,7 +3,7 @@ import { and, asc, count, desc, eq, isNotNull, isNull, or, sql } from 'drizzle-o
 import { db } from './db'
 import { link, media, member, scoutYear as scoutYearTable, staffMember, totem, yearProject } from '@/db/schema'
 import { shortNames } from './format'
-import { normalizeAnswers, normalizeTemplate, type ProjectTemplate } from './project'
+import { canReadProjects, normalizeAnswers, normalizeTemplate, type ProjectTemplate } from './project'
 import { scoutYearOf } from './scout-year'
 
 // Tabù reads: not cached (the Tabù is dynamic and only a few dozen leaders use it). Callers must
@@ -35,10 +35,10 @@ export async function getYearSetting(id: string): Promise<YearSetting | null> {
   return row ? toSetting(row) : null
 }
 
-// Resolves ?anno=…: only visible years can be opened. Without one: the current year if visible,
-// else the latest visible one; null when no year is visible.
-export async function resolveYear(requested: string | undefined) {
-  const visible = (await getYearSettings()).filter(y => y.visible)
+// Resolves ?anno=…: only visible years can be opened (and, with `allowed`, only those it accepts).
+// Without one: the current year if visible, else the latest visible one; null when there is none.
+export async function resolveYear(requested: string | undefined, allowed: (year: YearSetting) => boolean = () => true) {
+  const visible = (await getYearSettings()).filter(y => y.visible && allowed(y))
   const year = visible.find(y => y.id === requested) ?? visible.find(y => y.id === scoutYearOf()) ?? visible[0] ?? null
   return { year, visible }
 }
@@ -49,6 +49,15 @@ export async function getProject(memberCode: string, year: YearSetting) {
     .from(yearProject)
     .where(and(eq(yearProject.memberCode, memberCode), eq(yearProject.scoutYear, year.id)))
   return project ? { ...project, sections: normalizeAnswers(year.template, project.sections) } : null
+}
+
+// The years of the visible ones whose other projects the leader can read (lib/project.ts
+// canReadProjects). Their own project years come from the index (member_code, scout_year).
+export async function resolveReadableYear(requested: string | undefined, memberCode: string) {
+  const own = await db.select({ year: yearProject.scoutYear }).from(yearProject).where(eq(yearProject.memberCode, memberCode))
+  const ownYears = new Set(own.map(r => r.year))
+  const current = scoutYearOf()
+  return resolveYear(requested, y => canReadProjects(y, ownYears, current))
 }
 
 // Every leader with their project for the year (null when not written yet), plus the projects of

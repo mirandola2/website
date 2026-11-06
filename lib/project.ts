@@ -90,3 +90,15 @@ export function normalizeAnswers(template: ProjectTemplate, raw: unknown): Proje
 export function isAreaEmpty(answers: Record<string, string | number>) {
   return Object.values(answers).every(v => !v)
 }
+
+// Who can read the other leaders' projects of a year ("Tutti i progetti"; their own is always
+// readable): the year must be visible, and be the current scout year, or still active, or one in
+// which the leader saved their own project. Closed past years are read only by who was there.
+// The same for admins.
+export function canReadProjects(
+  year: { id: string; visible: boolean; active: boolean },
+  ownProjectYears: ReadonlySet<string>,
+  currentYear: string,
+) {
+  return year.visible && (year.id === currentYear || year.active || ownProjectYears.has(year.id))
+}

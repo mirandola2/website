@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { requireLeader } from '@/lib/dal'
-import { getProjectsForYear, NO_YEAR, resolveYear } from '@/lib/tabu'
+import { getProjectsForYear, resolveReadableYear } from '@/lib/tabu'
 import { filledSentence, formatDate } from '@/lib/format'
 import { splitStaff, staffColors, staffLabels } from '@/lib/staff'
 import StaffAvatar from '@/components/tabu/StaffAvatar'
@@ -9,6 +9,9 @@ import ProjectDialog from '@/components/tabu/ProjectDialog'
 import YearSelect from '@/components/tabu/YearSelect'
 
 export const metadata: Metadata = { title: 'Tutti i progetti' }
+
+const NO_READABLE_YEAR =
+  'Nessun anno da leggere: si leggono i progetti dell’anno in corso, degli anni ancora aperti e di quelli in cui hai scritto il tuo.'
 
 function StaffBadges({ staff }: { staff: string }) {
   return (
@@ -23,14 +26,15 @@ function StaffBadges({ staff }: { staff: string }) {
 }
 
 export default async function ProjectsPage({ searchParams }: { searchParams: Promise<{ anno?: string }> }) {
-  await requireLeader()
+  const leader = await requireLeader()
   const { anno } = await searchParams
-  const { year, visible } = await resolveYear(anno)
+  // Only the years whose projects this leader can read: the others are not even listed
+  const { year, visible } = await resolveReadableYear(anno, leader.memberCode)
   if (!year) {
     return (
       <div className="space-y-6">
         <h1 className="font-display text-4xl text-primary">Tutti i Progetti dei Capi</h1>
-        <p>{NO_YEAR}</p>
+        <p>{NO_READABLE_YEAR}</p>
       </div>
     )
   }
