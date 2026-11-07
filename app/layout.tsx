@@ -5,6 +5,7 @@ import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import OfflineBanner from '@/components/OfflineBanner'
 import PwaRegister from '@/components/PwaRegister'
+import { ICONS_VERSION } from '@/lib/pwa'
 import './globals.css'
 
 const roboto = Roboto({
@@ -42,7 +43,7 @@ export const metadata: Metadata = {
   description: 'Siamo a Mirandola dal 1983: scopri le ultime notizie, la nostra storia, i nostri staff, i nomi totem, la galleria foto e video e una raccolta di strumenti utili.',
   icons: {
     icon: '/favicon.ico',
-    apple: '/icons/apple-touch-icon.png',
+    apple: `/icons/apple-touch-icon.png?v=${ICONS_VERSION}`,
   },
   appleWebApp: { capable: true, title: 'Mirandola 2', statusBarStyle: 'default' },
 }

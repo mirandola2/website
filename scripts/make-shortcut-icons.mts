@@ -1,5 +1,7 @@
 // Draws the icons of the PWA shortcuts (long press on the app icon): the same Phosphor icons
 // used in the header speed dial (components/navigation.ts), in white on the brand purple.
+// The purple is full bleed and the manifest declares the icons maskable too, so Android fills the whole
+// button with it instead of putting a small square inside a white circle.
 //
 //   npx tsx scripts/make-shortcut-icons.mts
 import fs from 'node:fs'
@@ -11,8 +13,8 @@ import { BroadcastIcon, LockKeyIcon, PawPrintIcon } from '@phosphor-icons/react/
 
 const BRAND = '#462678'
 const SIZE = 192
-// share of the square taken by the glyph: the OS crops shortcut icons to a circle or squircle
-const GLYPH = 0.56
+// share of the square taken by the glyph: it stays inside the maskable safe zone (a circle 80% wide)
+const GLYPH = 0.5
 
 fs.mkdirSync('public/icons', { recursive: true })
 

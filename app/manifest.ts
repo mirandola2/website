@@ -1,6 +1,17 @@
 import type { MetadataRoute } from 'next'
+import { ICONS_VERSION } from '@/lib/pwa'
 
-const shortcutIcon = (name: string) => ({ src: `/icons/shortcut-${name}.png`, sizes: '192x192', type: 'image/png' })
+type Icon = NonNullable<MetadataRoute.Manifest['icons']>[number]
+
+const png = (file: string, size: number, purpose: Icon['purpose']): Icon => ({
+  src: `/icons/${file}.png?v=${ICONS_VERSION}`,
+  sizes: `${size}x${size}`,
+  type: 'image/png',
+  purpose,
+})
+
+// Full bleed purple, so the same file works both as is and cropped by Android.
+const shortcutIcons = (name: string) => [png(`shortcut-${name}`, 192, 'any'), png(`shortcut-${name}`, 192, 'maskable')]
 
 // Makes the site installable (Chrome/Edge/Android offer it, Safari on iOS has "Add to Home Screen").
 // What works without a connection is decided by public/sw.js. The icons are drawn by scripts/make-icons.mts and scripts/make-shortcut-icons.mts.
@@ -16,14 +27,15 @@ export default function manifest(): MetadataRoute.Manifest {
     background_color: '#462678',
     theme_color: '#462678',
     icons: [
-      { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-      { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
-      { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+      png('icon-192', 192, 'any'),
+      png('icon-512', 512, 'any'),
+      png('maskable-512', 512, 'maskable'),
+      png('monochrome-512', 512, 'monochrome'),
     ],
     shortcuts: [
-      { name: 'Traduttore Morse', short_name: 'Morse', url: '/morse/', icons: [shortcutIcon('morse')] },
-      { name: 'Nomi Totem', short_name: 'Totem', url: '/totem/', icons: [shortcutIcon('totem')] },
-      { name: 'Tabù', url: '/tabu/', icons: [shortcutIcon('tabu')] },
+      { name: 'Traduttore Morse', short_name: 'Morse', url: '/morse/', icons: shortcutIcons('morse') },
+      { name: 'Nomi Totem', short_name: 'Totem', url: '/totem/', icons: shortcutIcons('totem') },
+      { name: 'Tabù', url: '/tabu/', icons: shortcutIcons('tabu') },
     ],
   }
 }

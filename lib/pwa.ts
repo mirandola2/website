@@ -1,6 +1,10 @@
 // Shared by the pieces of the installable app that run in the page; the service worker itself is
 // public/sw.js, which cannot import this: keep the names and the lists in step with it.
 
+// Bump when the icons in public/icons are redrawn (scripts/make-icons.mts): sw.js serves /icons/ cache
+// first, and a new URL also makes Chrome refresh the icons of the installed app.
+export const ICONS_VERSION = 2
+
 // Pages kept for offline use. The first group is public, the second is the Tabù (it is stored only
 // for a logged-in leader, see PwaRegister).
 export const OFFLINE_PUBLIC = ['/', '/morse/', '/totem/', '/codice-socio/']
