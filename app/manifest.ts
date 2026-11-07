@@ -10,8 +10,8 @@ const png = (file: string, size: number, purpose: Icon['purpose']): Icon => ({
   purpose,
 })
 
-// Full bleed purple, so the same file works both as is and cropped by Android.
-const shortcutIcons = (name: string) => [png(`shortcut-${name}`, 192, 'any'), png(`shortcut-${name}`, 192, 'maskable')]
+// "any" only: Chrome ignores the other purposes for shortcuts (see scripts/make-shortcut-icons.mts).
+const shortcutIcons = (name: string) => [png(`shortcut-${name}`, 192, 'any')]
 
 // Makes the site installable (Chrome/Edge/Android offer it, Safari on iOS has "Add to Home Screen").
 // What works without a connection is decided by public/sw.js. The icons are drawn by scripts/make-icons.mts and scripts/make-shortcut-icons.mts.

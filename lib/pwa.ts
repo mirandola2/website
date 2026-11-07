@@ -3,7 +3,7 @@
 
 // Bump when the icons in public/icons are redrawn (scripts/make-icons.mts): sw.js serves /icons/ cache
 // first, and a new URL also makes Chrome refresh the icons of the installed app.
-export const ICONS_VERSION = 2
+export const ICONS_VERSION = 3
 
 // Pages kept for offline use. The first group is public, the second is the Tabù (it is stored only
 // for a logged-in leader, see PwaRegister).

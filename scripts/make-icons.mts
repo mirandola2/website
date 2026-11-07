@@ -5,10 +5,14 @@
 // - icon-*.png, apple-touch-icon.png ("any"): the logo spans ANY of the square, so the rounded corners
 //   iOS, macOS and Windows apply never touch it.
 // - maskable-512.png: Android crops it to a circle, squircle or teardrop. Every pixel of the logo stays
-//   inside the safe zone, a centred circle with a radius of 40% of the side (SAFE leaves a margin).
-// - monochrome-512.png: for Android themed icons, which ignore the colours and tint the alpha
-//   channel with the wallpaper palette. The logo becomes one solid shape, with a thin transparent
-//   line separating the fleur-de-lis from the trefoil. Same placement as the maskable icon.
+//   inside the safe zone, a centred circle with a radius of 40% of the side, as large as it allows.
+//   Android themed icons are made from this one too (see below), so a bigger logo here is a bigger
+//   logo there.
+// - monochrome-512.png: what Android themed icons would need, a silhouette that the system tints with
+//   the wallpaper palette. The logo becomes one solid shape, with a thin transparent line separating
+//   the fleur-de-lis from the trefoil. Same placement as the maskable icon. Chrome does not pack it in
+//   the installed app yet (MONOCHROME is unused in components/webapk/webapk.proto), so for now Android
+//   recolours the maskable icon by itself, purple background included.
 //
 //   npx tsx scripts/make-icons.mts [icon.svg]
 import fs from 'node:fs'
@@ -18,7 +22,7 @@ const BRAND = '#462678'
 // share of the side taken by the longer side of the logo, in the "any" icons
 const ANY = 0.8
 // distance of the farthest logo pixel from the centre, as a share of the side (the spec allows 0.4)
-const SAFE = 0.38
+const SAFE = 0.4
 // resolution the logo is rendered at before being scaled down
 const HI = 2048
 
