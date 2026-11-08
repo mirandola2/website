@@ -2,7 +2,7 @@
 
 import { useEffect, useSyncExternalStore } from 'react'
 import { usePathname } from 'next/navigation'
-import { DRAWER_ID } from './navigation'
+import { DRAWER_ID, isStandalonePage } from './navigation'
 
 function subscribeScroll(onChange: () => void) {
   window.addEventListener('scroll', onChange, { passive: true })
@@ -45,6 +45,7 @@ export default function HeaderNavbar({ children }: { children: React.ReactNode }
 
   // The Tabù (leaders' area) has its own navbar (components/tabu/TabuNavbar.tsx)
   if (pathname === '/tabu' || pathname.startsWith('/tabu/')) return null
+  if (isStandalonePage(pathname)) return null
 
   // `data-scrolled` lets the children (e.g. the logo) shrink once the page is scrolled
   return (

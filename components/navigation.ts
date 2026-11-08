@@ -3,6 +3,13 @@ import { BroadcastIcon, CardsThreeIcon, IdentificationCardIcon, LockKeyIcon, Paw
 
 export const DRAWER_ID = 'main-drawer'
 
+// Pages with their own minimal chrome: no site navbar, drawer or footer (e.g. /iban, linked from messages)
+const STANDALONE_PATHS = ['/iban']
+
+export function isStandalonePage(pathname: string) {
+  return STANDALONE_PATHS.some(path => pathname === path || pathname.startsWith(`${path}/`))
+}
+
 export interface MenuItem {
   label: string
   href?: string

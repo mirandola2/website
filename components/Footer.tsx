@@ -1,9 +1,14 @@
 'use client'
 
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { XIcon } from '@phosphor-icons/react'
+import { isStandalonePage } from './navigation'
 
 export default function Footer() {
+  const pathname = usePathname()
+  if (isStandalonePage(pathname)) return null
+
   return (
     <div className="mt-auto">
       <footer className="mt-12 py-5 sm:p-10 bg-primary text-primary-content">
