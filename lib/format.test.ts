@@ -1,16 +1,22 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { greeting, normalizeName, shortNames, slugify, titleCase } from './format'
+import { DAY_GREETINGS, greeting, NIGHT_GREETINGS, normalizeName, shortNames, slugify, titleCase } from './format'
 
 test('greeting follows the time in Rome', () => {
+  const first = () => 0
   // CET (UTC+1) in winter
-  assert.equal(greeting(new Date('2026-12-01T05:00:00Z')), 'Buon giorno') // 06:00
-  assert.equal(greeting(new Date('2026-12-01T16:59:00Z')), 'Buon giorno') // 17:59
-  assert.equal(greeting(new Date('2026-12-01T17:00:00Z')), 'Buona sera') // 18:00
-  assert.equal(greeting(new Date('2026-12-01T21:00:00Z')), 'Buona notte') // 22:00
-  assert.equal(greeting(new Date('2026-12-01T04:59:00Z')), 'Buona notte') // 05:59
+  assert.equal(greeting(new Date('2026-12-01T05:00:00Z'), first), DAY_GREETINGS[0]) // 06:00
+  assert.equal(greeting(new Date('2026-12-01T20:59:00Z'), first), DAY_GREETINGS[0]) // 21:59
+  assert.equal(greeting(new Date('2026-12-01T21:00:00Z'), first), NIGHT_GREETINGS[0]) // 22:00
+  assert.equal(greeting(new Date('2026-12-01T04:59:00Z'), first), NIGHT_GREETINGS[0]) // 05:59
   // CEST (UTC+2) in summer
-  assert.equal(greeting(new Date('2026-07-01T16:30:00Z')), 'Buona sera') // 18:30
+  assert.equal(greeting(new Date('2026-07-01T20:30:00Z'), first), NIGHT_GREETINGS[0]) // 22:30
+})
+
+test('greeting picks within the list, last one included', () => {
+  const last = () => 0.9999
+  assert.equal(greeting(new Date('2026-12-01T10:00:00Z'), last), DAY_GREETINGS.at(-1))
+  assert.equal(greeting(new Date('2026-12-01T23:00:00Z'), last), NIGHT_GREETINGS.at(-1))
 })
 
 test('slugify drops accents and symbols', () => {

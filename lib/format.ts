@@ -25,12 +25,55 @@ export function shortNames(names: string[]) {
 export const filledSentence = (filled: number, total: number, year: string) =>
   `${filled} ${filled === 1 ? 'capo' : 'capi'} su ${total} ${filled === 1 ? 'ha' : 'hanno'} compilato il progetto ${year}.`
 
-// Greeting by the time in Italy: Buon giorno 6–18, Buona sera 18–22, Buona notte 22–6
-export function greeting(now = new Date()) {
+// Greetings shown as "<greeting> <name>!", so each one ends where the name goes
+export const DAY_GREETINGS = [
+  'Buongiorno',
+  'Che sia un buon giorno,',
+  'Buona giornata',
+  'Buona Caccia',
+  'Buon Volo',
+  'Che splendida giornata',
+  'Il sole splende dietro le nubi,',
+  'Guida la tua Canoa,',
+  'Grazie del tuo Servizio',
+  '...il nostro dovere verso Dio e il nostro Paese,',
+  'Buona Strada',
+  'A Ciel Sereno',
+  'Zaino in spalla,',
+  'Estote Parati,',
+  'Pronti a Servire,',
+  'Eccoci',
+  'Del nostro meglio',
+  "Un altro giorno, un'altra Avventura,",
+]
+export const NIGHT_GREETINGS = [
+  'Buona serata',
+  'Ula, ula, ulaaa,',
+  'Silenzio in tenda,',
+  'Il campo dorme, ma non tu,',
+  'Turno di guardia,',
+  'È ora di riposarsi',
+  'La luna è bella stasera,',
+  'Quante stelle',
+  'Hanno fischiato il silenzio,',
+  'Le stelle sono alte nel Cielo,',
+  'Shhh, la tenda accanto dorme,',
+  'Il sacco a pelo ti aspetta,',
+  "Ancora in piedi?! 'Notte,",
+  'Buonanotte… o buongiorno,',
+  'Vai a letto,',
+  'Il Bosco dorme,',
+  'È sera e stanchi siam,',
+  'Il campo, calmo e silente,',
+  'Scendi, notte, va via la paura,',
+  'Che il risveglio sia pace ed un sorriso,'
+]
+
+// Random greeting by the time in Italy: day 6–22, night 22–6
+export function greeting(now = new Date(), random = Math.random) {
   const hour = Number(new Intl.DateTimeFormat('it-IT', { hour: 'numeric', hourCycle: 'h23', timeZone: 'Europe/Rome' }).format(now))
-  if (hour >= 6 && hour < 18) return 'Buon giorno'
-  if (hour >= 18 && hour < 22) return 'Buona sera'
-  return 'Buona notte'
+  const list = hour >= 6 && hour < 22 ? DAY_GREETINGS : NIGHT_GREETINGS
+  return list[Math.floor(random() * list.length)]
 }
 
 // "Obiettivi 2024-25" -> "obiettivi-2024-25", "Città & Paese" -> "citta-paese". Staff slugs (admin
