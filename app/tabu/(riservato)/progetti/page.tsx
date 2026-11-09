@@ -39,7 +39,8 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
     )
   }
   const rows = await getProjectsForYear(year)
-  // Written projects first (most recent first), then who hasn't written one yet
+  // Written projects first (most recent first), then who hasn't written one yet: only while the year is open, since
+  // a closed year's missing list would be today's leaders, not that year's
   const written = rows
     .flatMap(r => (r.project ? [{ ...r, project: r.project }] : []))
     .sort((a, b) => b.project.updatedAt.getTime() - a.project.updatedAt.getTime())
@@ -51,7 +52,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
         <h1 className="font-display text-4xl text-primary">Tutti i Progetti dei Capi</h1>
         {visible.length > 1 && <YearSelect years={visible.map(y => y.id)} current={year.id} basePath="/tabu/progetti/" />}
       </div>
-      <p className="opacity-70">{filledSentence(written.length, rows.length, year.id.replace('-', '/20'))}</p>
+      {year.active && <p className="opacity-70">{filledSentence(written.length, rows.length, year.id.replace('-', '/20'))}</p>}
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {written.map(({ memberCode, nome, shortName, img, staff, project }) => (
@@ -85,7 +86,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
         ))}
       </div>
 
-      {missing.length > 0 && (
+      {year.active && missing.length > 0 && (
         <section className="card bg-base-200">
           <div className="card-body">
             <h2 className="card-title">Non ancora compilato</h2>
