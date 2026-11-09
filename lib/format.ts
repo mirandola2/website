@@ -5,7 +5,14 @@ export const formatDate = (date: Date) => dateFormat.format(date)
 // member.birthday 'YYYY-MM-DD' -> '14/03/2003'
 export const formatBirthday = (birthday: string) => birthday.split('-').reverse().join('/')
 
-export const firstName = (nome: string) => nome.split(' ')[0]
+// Titles that are part of how a person is called: "Don Mario Rossi" -> "Don Mario"
+const NAME_PREFIXES = ['don', 'suor']
+
+export function firstName(nome: string) {
+  const words = nome.trim().split(/\s+/)
+  const prefixed = words.length > 1 && NAME_PREFIXES.includes(words[0].toLocaleLowerCase('it-IT'))
+  return words.slice(0, prefixed ? 2 : 1).join(' ')
+}
 
 // How to call each leader in a list: the first name, plus the initial of the surname when another
 // one has the same first name ("Luca M.", "Luca T."), or the full name when even that is the same

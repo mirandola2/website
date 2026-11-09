@@ -1,6 +1,8 @@
 // Upcoming birthdays, computed on the server. Kept free of server-only imports so the day math
 // can be unit-tested (lib/birthdays.test.ts).
 
+import { firstName } from './format'
+
 export interface UpcomingBirthday {
   name: string
   last_initial: string
@@ -58,7 +60,7 @@ export function upcomingBirthdays(
     .filter(m => m.t_minus <= days)
     .sort((a, b) => a.t_minus - b.t_minus || a.fullName.localeCompare(b.fullName))
     .map(({ fullName, t_minus }) => {
-      const [name, rest = ''] = fullName.split(/ (.*)/)
-      return { name, last_initial: rest.charAt(0), t_minus }
+      const name = firstName(fullName)
+      return { name, last_initial: fullName.slice(name.length).trim().charAt(0), t_minus }
     })
 }

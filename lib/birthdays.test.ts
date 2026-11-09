@@ -54,3 +54,8 @@ test('birthdayWindow covers the next days, one more for Feb 29', () => {
   const w = birthdayWindow('2026-02-21', 7)
   assert.ok(w.from <= '02-29' && '02-29' <= w.to)
 })
+
+test('upcoming list keeps Don and Suor with the name', () => {
+  const members = [{ fullName: 'DON MARIO ROSSI', birthday: '2000-10-28' }]
+  assert.deepEqual(upcomingBirthdays(members, '2026-10-28'), [{ name: 'DON MARIO', last_initial: 'R', t_minus: 0 }])
+})

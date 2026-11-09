@@ -1,4 +1,5 @@
 import { getStaffMembers, type StaffMember } from '@/lib/data'
+import { firstName } from '@/lib/format'
 import { LC_STAFF } from '@/lib/staff'
 import StaffGrid, { type StaffPerson } from './StaffGrid'
 
@@ -19,7 +20,10 @@ function usesHuntName(person: StaffMember, staff: string, coca: boolean) {
 function displayName(person: StaffMember, staff: string, coca: boolean) {
   if (coca) return person.nome
   if (person.nomeCaccia && usesHuntName(person, staff, coca)) return person.nomeCaccia
-  return person.nome.split(' ').slice(0, -1).join(' ') || person.nome
+  // Every name but the surname, never less than the first name with its prefix ("Don Mario")
+  const names = person.nome.split(' ').slice(0, -1).join(' ')
+  const first = firstName(person.nome)
+  return names.length > first.length ? names : first
 }
 
 const orderKey = (p: StaffMember) => (typeof p.order === 'number' ? p.order : Infinity)

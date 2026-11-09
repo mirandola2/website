@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { DAY_GREETINGS, greeting, NIGHT_GREETINGS, normalizeName, shortNames, slugify, titleCase } from './format'
+import { DAY_GREETINGS, firstName, greeting, NIGHT_GREETINGS, normalizeName, shortNames, slugify, titleCase } from './format'
 
 test('greeting follows the time in Rome', () => {
   const first = () => 0
@@ -40,4 +40,17 @@ test('shortNames tells apart leaders with the same first name', () => {
   assert.deepEqual(shortNames(['Matteo Ba', 'Matteo Be', 'Anna']), ['Matteo Ba', 'Matteo Be', 'Anna'])
   // Full homonyms stay the same (the avatar tells them apart)
   assert.deepEqual(shortNames(['Anna Rossi', 'Anna Rossi']), ['Anna Rossi', 'Anna Rossi'])
+})
+
+test('firstName keeps Don and Suor with the name', () => {
+  assert.equal(firstName('Mario Rossi'), 'Mario')
+  assert.equal(firstName('Don Mario Rossi'), 'Don Mario')
+  assert.equal(firstName('SUOR Anna Bianchi'), 'SUOR Anna')
+  assert.equal(firstName('Don'), 'Don')
+  assert.equal(firstName('Donato Rossi'), 'Donato')
+})
+
+test('shortNames keeps the prefix', () => {
+  assert.deepEqual(shortNames(['Don Mario Rossi', 'Mario Verdi']), ['Don Mario', 'Mario'])
+  assert.deepEqual(shortNames(['Suor Anna Rossi', 'Suor Anna Bianchi']), ['Suor Anna R.', 'Suor Anna B.'])
 })
