@@ -14,7 +14,6 @@ export default function Morse() {
   const [open, setOpen] = useState(false)
   const [notice, setNotice] = useState('')
   const playback = useRef<MorsePlayback | null>(null)
-  const collapse = useRef<HTMLDivElement>(null)
 
   const pulses = morseToPulses(mexMorse)
   const canPlay = pulses.length > 0 && (outputs.sound || outputs.torch)
@@ -53,16 +52,6 @@ export default function Morse() {
   // Leaving the page must not leave the torch or the camera on
   useEffect(() => () => playback.current?.stop(), [])
 
-  // The panel closes on a click outside it, but not while playing: its Stop button must stay there
-  useEffect(() => {
-    if (!open || playing) return
-    const onPointerDown = (e: PointerEvent) => {
-      if (!collapse.current?.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('pointerdown', onPointerDown)
-    return () => document.removeEventListener('pointerdown', onPointerDown)
-  }, [open, playing])
-
   const toggle = (key: keyof MorseOutputs) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setOutputs(o => ({ ...o, [key]: e.target.checked }))
 
@@ -87,14 +76,21 @@ export default function Morse() {
           onChange={e => morse2text(e.target.value)}
         />
 
-        <div ref={collapse} className="collapse collapse-arrow bg-base-200">
+        <div className="collapse collapse-arrow bg-base-200">
           <input type="checkbox" checked={open} onChange={e => setOpen(e.target.checked)} aria-label="Mostra le opzioni di riproduzione" />
           <div className="collapse-title font-bold">Riproduci (sperimentale)</div>
           <div className="collapse-content space-y-3">
             <p className="text-sm opacity-70">
-              Trasmette il codice Morse con il suono e, su Android con Chrome, con la torcia del telefono.
+              Trasmette il codice Morse con il suono
+              {/* The torch exists only on phones: on a mouse device its text is hidden */}
+              <span className="hidden pointer-coarse:inline">
+                {' '}e, su Android con Chrome, con la torcia del telefono. Devi autorizzare l&apos;uso della fotocamera,
+                che però serve solo ad accendere la torcia: non viene usata in nessun altro modo
+              </span>
+              .
             </p>
-            <div className="flex flex-wrap gap-x-4 gap-y-1">
+            {/* Only phones choose the outputs: on desktop it is always the sound, which is on by default */}
+            <div className="hidden pointer-coarse:flex flex-wrap gap-x-4 gap-y-1">
               <label className="label cursor-pointer gap-2 text-black">
                 <input type="checkbox" className="checkbox checkbox-sm" checked={outputs.sound} onChange={toggle('sound')} disabled={playing} />
                 Suono
