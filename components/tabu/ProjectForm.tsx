@@ -11,7 +11,7 @@ interface ProjectFormProps {
   editable: boolean
   // A saved project opens read-only: "Modifica" shows the fields, saving goes back to the view
   saved: boolean
-  // The saved "Bozza" flag: the toggle's starting value
+  // The saved "Bozza" flag: the toggle's starting value (a project not saved yet starts as a draft)
   draft: boolean
   // The read-only project (<ProjectView>), shown whenever the fields aren't
   view: React.ReactNode
@@ -122,12 +122,7 @@ export default function ProjectForm({ action, editable, saved, draft, view, chil
       )}
       {editing && (
         <div className="sticky bottom-0 z-10 mt-4 -mx-4 px-4 py-3 bg-base-100/95 backdrop-blur border-t border-base-300 flex flex-wrap items-center gap-3">
-          {/* Read by saveYearProject; a change counts as unsaved like the fields (onInput) */}
-          <label className="flex w-full cursor-pointer items-center gap-2 text-sm">
-            <input type="checkbox" name="draft" defaultChecked={draft} className="toggle toggle-sm toggle-warning" />
-            Bozza
-            <span className="opacity-60">(gli altri capi lo vedono tra chi deve ancora finire)</span>
-          </label>
+          <DraftToggle saved={draft} />
           <button type="submit" className="btn btn-primary" disabled={pending}>
             {pending ? <span className="loading loading-spinner loading-xs" /> : <FloppyDiskIcon size={18} weight="bold" aria-hidden />}
             Salva progetto
@@ -153,5 +148,30 @@ export default function ProjectForm({ action, editable, saved, draft, view, chil
         </div>
       )}
     </form>
+  )
+}
+
+// "È ancora una bozza?": read by saveYearProject (field "draft"); a change counts as unsaved like the fields (the
+// form's onInput). Mounted with the edit bar, so it starts again from the saved value.
+function DraftToggle({ saved }: { saved: boolean }) {
+  const [draft, setDraft] = useState(saved)
+  return (
+    <label className="flex w-full cursor-pointer items-start gap-3 rounded-box bg-base-200 px-4 py-3">
+      <input
+        type="checkbox"
+        name="draft"
+        checked={draft}
+        onChange={e => setDraft(e.target.checked)}
+        className="toggle mt-0.5"
+      />
+      <span>
+        <span className="block font-semibold">È ancora una bozza?</span>
+        <span className="block text-sm opacity-70">
+          {draft
+            ? 'Sì: gli altri capi lo vedono tra chi deve ancora finire.'
+            : 'No: il progetto è definitivo, gli altri capi lo vedono tra quelli completati.'}
+        </span>
+      </span>
+    </label>
   )
 }

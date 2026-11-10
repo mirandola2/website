@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { NotePencilIcon } from '@phosphor-icons/react/ssr'
 import { requireLeader } from '@/lib/dal'
 import { getProject, NO_YEAR, resolveYear } from '@/lib/tabu'
 import { formatDate } from '@/lib/format'
@@ -38,8 +39,8 @@ export default async function MyProjectPage({ searchParams }: { searchParams: Pr
         leggerlo, solo tu puoi modificarlo.
       </p>
       {year.active && project?.draft && (
-        <div role="status" className="alert alert-warning alert-soft">
-          <span className="badge badge-warning">Bozza</span>
+        <div role="status" className="alert border-0 bg-neutral text-base-content shadow-none">
+          <NotePencilIcon size={22} weight="duotone" aria-hidden />
           Il progetto è ancora una bozza: gli altri capi lo vedono tra chi deve ancora finire.
         </div>
       )}
@@ -55,7 +56,7 @@ export default async function MyProjectPage({ searchParams }: { searchParams: Pr
         action={saveYearProject}
         editable={year.active}
         saved={!!project}
-        draft={project?.draft ?? false}
+        draft={project?.draft ?? true}
         view={<ProjectView template={year.template} answers={answers} detailed />}
       >
         <input type="hidden" name="scoutYear" value={year.id} />

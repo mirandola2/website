@@ -45,3 +45,5 @@ AGENTS.md
 
 # Database dumps in the project root (d1.sql: real birthdays and member codes)
 /*.sql
+tsconfig.tsbuildinfo
+.claude/launch.json
