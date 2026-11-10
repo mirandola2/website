@@ -37,6 +37,12 @@ export default async function MyProjectPage({ searchParams }: { searchParams: Pr
         {project ? `Ultima modifica il ${formatDate(project.updatedAt)}.` : 'Non ancora salvato.'} Gli altri capi possono
         leggerlo, solo tu puoi modificarlo.
       </p>
+      {year.active && project?.draft && (
+        <div role="status" className="alert alert-warning alert-soft">
+          <span className="badge badge-warning">Bozza</span>
+          Il progetto è ancora una bozza: gli altri capi lo vedono tra chi deve ancora finire.
+        </div>
+      )}
       {!year.active && (
         <div role="alert" className="alert alert-info alert-soft">
           Questo anno è chiuso: il progetto non si può più modificare.
@@ -49,6 +55,7 @@ export default async function MyProjectPage({ searchParams }: { searchParams: Pr
         action={saveYearProject}
         editable={year.active}
         saved={!!project}
+        draft={project?.draft ?? false}
         view={<ProjectView template={year.template} answers={answers} detailed />}
       >
         <input type="hidden" name="scoutYear" value={year.id} />

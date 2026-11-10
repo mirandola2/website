@@ -29,8 +29,10 @@ export function shortNames(names: string[]) {
 }
 
 // "1 capo su 5 ha compilato…" / "3 capi su 5 hanno compilato…"
-export const filledSentence = (filled: number, total: number, year: string) =>
-  `${filled} ${filled === 1 ? 'capo' : 'capi'} su ${total} ${filled === 1 ? 'ha' : 'hanno'} compilato il progetto ${year}.`
+// `filled`: finished projects only; `drafting`: who saved a draft ("Bozza")
+export const filledSentence = (filled: number, total: number, year: string, drafting = 0) =>
+  `${filled} ${filled === 1 ? 'capo' : 'capi'} su ${total} ${filled === 1 ? 'ha' : 'hanno'} compilato il progetto ${year}` +
+  (drafting ? `, ${drafting} ${drafting === 1 ? 'lo sta facendo' : 'lo stanno facendo'}.` : '.')
 
 // Greetings shown as "<greeting> <name>!", so each one ends where the name goes
 export const DAY_GREETINGS = [

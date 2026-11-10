@@ -37,15 +37,18 @@ export async function saveYearProject(_prev: ActionResult, formData: FormData): 
   if (!parsed.success) return { ok: false, message: parsed.error.issues[0].message }
 
   const sections = parsed.data as ProjectAnswers
+  // The "Bozza" toggle: a checkbox, sent only when on
+  const draft = formData.get('draft') === 'on'
   const updatedAt = new Date()
   await db
     .insert(yearProject)
-    .values({ memberCode: leader.memberCode, scoutYear: year.id, sections, updatedAt })
+    .values({ memberCode: leader.memberCode, scoutYear: year.id, sections, draft, updatedAt })
     .onConflictDoUpdate({
       target: [yearProject.memberCode, yearProject.scoutYear],
-      set: { sections, updatedAt },
+      set: { sections, draft, updatedAt },
     })
 
   revalidatePath('/tabu', 'layout')
-  return { ok: true, message: 'Progetto salvato.' }
+  return { ok: true, message: draft ? 'Bozza salvata.' : 'Progetto salvato.' }
 }
+

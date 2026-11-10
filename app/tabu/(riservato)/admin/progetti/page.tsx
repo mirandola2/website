@@ -2,17 +2,18 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { ArrowRightIcon } from '@phosphor-icons/react/ssr'
 import { requireAdmin } from '@/lib/dal'
-import { countProjectsByYear, getYearSettings } from '@/lib/tabu'
+import { countDraftsByYear, countProjectsByYear, getYearSettings } from '@/lib/tabu'
 import { formatScoutYear, parseScoutYear, scoutYearOf } from '@/lib/scout-year'
 import ActionForm from '@/components/tabu/ActionForm'
 import { Checkbox } from '@/components/tabu/Field'
+import BulkDraftChecks from '@/components/tabu/BulkDraftChecks'
 import { addYear, deleteYear, saveYearSettings } from '../actions'
 
 export const metadata: Metadata = { title: 'Admin · Progetti del Capo' }
 
 export default async function AdminProjectsPage() {
   await requireAdmin()
-  const [years, counts] = await Promise.all([getYearSettings(), countProjectsByYear()])
+  const [years, counts, draftCounts] = await Promise.all([getYearSettings(), countProjectsByYear(), countDraftsByYear()])
   // Years that can be added: from two years ago to next year
   const current = parseScoutYear(scoutYearOf())!
   const addable = [current + 1, current, current - 1, current - 2].map(formatScoutYear).filter(id => !years.some(y => y.id === id))
@@ -27,6 +28,10 @@ export default async function AdminProjectsPage() {
         <li>
           <b>Attivo</b>: i capi possono ancora modificare il proprio progetto. Negli anni non attivi non si può più modificare
           nulla. Un anno attivo è sempre anche visibile.
+        </li>
+        <li>
+          <b>Rendi tutti i PdC bozze / Rendi definitivi tutti i PdC</b>: finché l&apos;anno è attivo, rendono bozze o definitivi tutti insieme
+          i progetti già salvati, premendo Salva. In &ldquo;Tutti i progetti&rdquo; le bozze stanno tra chi deve ancora finire.
         </li>
         <li>
           <b>Modello</b>: le aree e le domande del progetto di quell&apos;anno. Cambiarlo cambia anche i progetti già
@@ -70,6 +75,7 @@ export default async function AdminProjectsPage() {
       <div className="grid gap-4 md:grid-cols-2">
         {years.map(year => {
           const projects = counts.get(year.id) ?? 0
+          const drafts = draftCounts.get(year.id) ?? 0
           return (
             <section key={year.id} className="card bg-base-200">
               <div className="card-body gap-3">
@@ -86,6 +92,7 @@ export default async function AdminProjectsPage() {
                 <p className="text-sm">
                   {year.template.areas.length} aree × {year.template.questions.length} domande ·{' '}
                   {projects === 1 ? '1 progetto compilato' : `${projects} progetti compilati`}
+                  {projects > 0 && ` (${drafts === 1 ? '1 bozza' : `${drafts} bozze`})`}
                 </p>
                 <ActionForm action={saveYearSettings} buttonClassName="btn btn-primary btn-sm">
                   <input type="hidden" name="id" value={year.id} />
@@ -93,6 +100,8 @@ export default async function AdminProjectsPage() {
                     <Checkbox label="Visibile" name="visible" defaultChecked={year.visible} />
                     <Checkbox label="Attivo" name="active" defaultChecked={year.active} />
                   </div>
+                  {/* key: unchecked again once the save has changed the drafts */}
+                  {year.active && projects > 0 && <BulkDraftChecks key={drafts} />}
                 </ActionForm>
                 <div className="card-actions items-center justify-between border-t border-base-300 pt-3">
                   <Link href={`/tabu/admin/progetti/${year.id}/`} className="btn btn-outline btn-sm">

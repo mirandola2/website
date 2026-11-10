@@ -358,6 +358,8 @@ const YearSchema = z.object({
   id: yearId,
   visible: z.literal('on').optional(),
   active: z.literal('on').optional(),
+  // BulkDraftChecks: '1' drafts every saved project of the year, '0' publishes them all
+  drafts: z.enum(['0', '1']).optional(),
 })
 
 // Per year: whether it is listed and whether it is still editable
@@ -365,13 +367,29 @@ export async function saveYearSettings(_prev: ActionResult, formData: FormData):
   await requireAdmin()
   const parsed = YearSchema.safeParse(Object.fromEntries(formData))
   if (!parsed.success) return fail(parsed.error)
+  const { id, drafts } = parsed.data
   const active = !!parsed.data.active
   // An editable year must be reachable
   const visible = active || !!parsed.data.visible
-  const rows = await db.update(scoutYear).set({ visible, active }).where(eq(scoutYear.id, parsed.data.id)).returning()
-  if (!rows.length) return { ok: false, message: 'Anno non trovato.' }
+  // The projects' drafts change only in a year that is active before this save (closed years are read-only); the
+  // leaders' last edit date stays the same
+  const [before] = await db.select({ active: scoutYear.active }).from(scoutYear).where(eq(scoutYear.id, id))
+  if (!before) return { ok: false, message: 'Anno non trovato.' }
+  if (drafts && !before.active) return { ok: false, message: 'Questo anno è chiuso: i progetti non si possono più modificare.' }
+  await db.update(scoutYear).set({ visible, active }).where(eq(scoutYear.id, id))
+  let message = 'Salvato.'
+  if (drafts) {
+    const draft = drafts === '1'
+    const rows = await db
+      .update(yearProject)
+      .set({ draft })
+      .where(and(eq(yearProject.scoutYear, id), ne(yearProject.draft, draft)))
+      .returning({ id: yearProject.id })
+    const n = rows.length
+    message = `Salvato: ${n === 1 ? '1 progetto trasformato' : `${n} progetti trasformati`}.`
+  }
   revalidatePath('/tabu', 'layout')
-  return { ok: true, message: 'Salvato.' }
+  return { ok: true, message }
 }
 
 const AddYearSchema = z.object({ id: yearId, copyFrom: z.string() })

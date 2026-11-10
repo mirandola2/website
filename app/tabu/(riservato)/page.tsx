@@ -53,7 +53,10 @@ export default async function Dashboard() {
             </h2>
             <p>
               {stats
-                ? filledSentence(stats.filled, stats.leaders, yearLabel!)
+                ? // A closed year has no drafts: they count as filled
+                  year!.active
+                  ? filledSentence(stats.filled, stats.leaders, yearLabel!, stats.drafting)
+                  : filledSentence(stats.filled + stats.drafting, stats.leaders, yearLabel!)
                 : year
                   ? `I progetti del ${yearLabel} li leggono solo i capi che hanno scritto il proprio.`
                   : NO_YEAR}

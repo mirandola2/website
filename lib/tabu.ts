@@ -71,6 +71,7 @@ export async function getProjectsForYear(year: YearSetting) {
       img: staffMember.img,
       staff: staffMember.staff,
       sections: yearProject.sections,
+      draft: yearProject.draft,
       updatedAt: yearProject.updatedAt,
     })
     .from(staffMember)
@@ -78,10 +79,10 @@ export async function getProjectsForYear(year: YearSetting) {
     .where(or(loginLeaders, isNotNull(yearProject.id)))
     .orderBy(asc(staffMember.position), asc(staffMember.memberCode))
   const names = shortNames(rows.map(r => r.nome))
-  return rows.map(({ sections, updatedAt, ...leader }, i) => ({
+  return rows.map(({ sections, draft, updatedAt, ...leader }, i) => ({
     ...leader,
     shortName: names[i],
-    project: updatedAt ? { sections: normalizeAnswers(year.template, sections), updatedAt } : null,
+    project: updatedAt ? { sections: normalizeAnswers(year.template, sections), draft: !!draft, updatedAt } : null,
   }))
 }
 
@@ -92,12 +93,22 @@ export async function countProjectsByYear() {
   return new Map(rows.map(r => [r.year, r.n]))
 }
 
+// Drafts ("Bozza") per year (admin: draft or publish them all at once)
+export async function countDraftsByYear() {
+  const rows = await db
+    .select({ year: yearProject.scoutYear, n: count() })
+    .from(yearProject)
+    .where(eq(yearProject.draft, true))
+    .groupBy(yearProject.scoutYear)
+  return new Map(rows.map(r => [r.year, r.n]))
+}
+
 export async function getDashboardStats(scoutYear: string) {
-  const [[leaders], [filled], latest] = await Promise.all([
+  const [[leaders], [saved], latest] = await Promise.all([
     db.select({ n: count() }).from(staffMember).where(loginLeaders),
-    // Out of the current leaders, like the total
+    // Out of the current leaders, like the total; drafts are not filled yet
     db
-      .select({ n: count() })
+      .select({ n: count(), drafts: sql<number>`sum(${yearProject.draft})` })
       .from(yearProject)
       .innerJoin(staffMember, eq(staffMember.memberCode, yearProject.memberCode))
       .where(and(eq(yearProject.scoutYear, scoutYear), loginLeaders)),
@@ -110,7 +121,8 @@ export async function getDashboardStats(scoutYear: string) {
       .orderBy(desc(yearProject.updatedAt))
       .limit(3),
   ])
-  return { leaders: leaders.n, filled: filled.n, latest }
+  const drafting = saved.drafts ?? 0
+  return { leaders: leaders.n, filled: saved.n - drafting, drafting, latest }
 }
 
 export async function getAdminCounts() {

@@ -1,0 +1,1 @@
+ALTER TABLE `year_project` ADD `draft` integer DEFAULT false NOT NULL;

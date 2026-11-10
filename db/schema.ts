@@ -110,6 +110,8 @@ export const yearProject = sqliteTable(
       .notNull()
       .references(() => scoutYear.id),
     sections: text({ mode: 'json' }).$type<ProjectAnswers>().notNull().default(sql`'{}'`),
+    // Saved but not finished yet: listed apart in "Tutti i progetti" and not counted as filled
+    draft: integer({ mode: 'boolean' }).notNull().default(false),
     updatedAt: integer({ mode: 'timestamp_ms' }).notNull(),
   },
   t => [

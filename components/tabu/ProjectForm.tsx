@@ -11,6 +11,8 @@ interface ProjectFormProps {
   editable: boolean
   // A saved project opens read-only: "Modifica" shows the fields, saving goes back to the view
   saved: boolean
+  // The saved "Bozza" flag: the toggle's starting value
+  draft: boolean
   // The read-only project (<ProjectView>), shown whenever the fields aren't
   view: React.ReactNode
   // The fields
@@ -19,7 +21,7 @@ interface ProjectFormProps {
 
 // The "Il mio progetto" form: tracks unsaved changes and warns before leaving the page, whether
 // by a link, the browser's Back button, a reload or closing the tab.
-export default function ProjectForm({ action, editable, saved, view, children }: ProjectFormProps) {
+export default function ProjectForm({ action, editable, saved, draft, view, children }: ProjectFormProps) {
   const [changed, setChanged] = useState(false)
   const [unlocked, setUnlocked] = useState(!saved)
   const editing = editable && unlocked
@@ -120,6 +122,12 @@ export default function ProjectForm({ action, editable, saved, view, children }:
       )}
       {editing && (
         <div className="sticky bottom-0 z-10 mt-4 -mx-4 px-4 py-3 bg-base-100/95 backdrop-blur border-t border-base-300 flex flex-wrap items-center gap-3">
+          {/* Read by saveYearProject; a change counts as unsaved like the fields (onInput) */}
+          <label className="flex w-full cursor-pointer items-center gap-2 text-sm">
+            <input type="checkbox" name="draft" defaultChecked={draft} className="toggle toggle-sm toggle-warning" />
+            Bozza
+            <span className="opacity-60">(gli altri capi lo vedono tra chi deve ancora finire)</span>
+          </label>
           <button type="submit" className="btn btn-primary" disabled={pending}>
             {pending ? <span className="loading loading-spinner loading-xs" /> : <FloppyDiskIcon size={18} weight="bold" aria-hidden />}
             Salva progetto
