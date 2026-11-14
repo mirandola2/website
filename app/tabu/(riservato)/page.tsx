@@ -1,9 +1,10 @@
 import Link from 'next/link'
-import { ArrowRightIcon, NotebookIcon, UsersThreeIcon } from '@phosphor-icons/react/ssr'
+import { ArrowRightIcon, NotebookIcon, ShuffleIcon, UsersThreeIcon } from '@phosphor-icons/react/ssr'
 import { requireLeader } from '@/lib/dal'
 import { canReadProjects } from '@/lib/project'
 import { scoutYearOf } from '@/lib/scout-year'
 import { getDashboardStats, getProject, NO_YEAR, resolveYear } from '@/lib/tabu'
+import { listOpenPescheFor } from '@/lib/pesca'
 import { filledSentence, firstName, formatDate, greeting, shortNames } from '@/lib/format'
 import StaffAvatar from '@/components/tabu/StaffAvatar'
 import MyMemberCode from '@/components/tabu/MyMemberCode'
@@ -17,6 +18,7 @@ export default async function Dashboard() {
   const stats = year && readable ? await getDashboardStats(year.id) : null
   const yearLabel = year?.id.replace('-', '/20')
   const latestNames = shortNames(stats?.latest.map(p => p.nome) ?? [])
+  const pesche = await listOpenPescheFor(leader.memberCode)
 
   return (
     <div className="space-y-6">
@@ -81,6 +83,28 @@ export default async function Dashboard() {
             </div>
           </div>
         </section>
+
+        {pesche.length > 0 && (
+          <section className="card bg-base-200">
+            <div className="card-body">
+              <h2 className="card-title">
+                <ShuffleIcon size={24} weight="duotone" aria-hidden />
+                Pesca
+              </h2>
+              <p>
+                {pesche.length === 1
+                  ? `${pesche[0].title} (${formatDate(pesche[0].createdAt)}): scopri chi hai pescato.`
+                  : `Sei in ${pesche.length} pesche: scopri chi hai pescato.`}
+              </p>
+              <div className="card-actions justify-end">
+                <Link href="/tabu/pesca/" className="btn btn-primary btn-sm">
+                  Apri
+                  <ArrowRightIcon size={16} weight="bold" aria-hidden />
+                </Link>
+              </div>
+            </div>
+          </section>
+        )}
 
         <MyMemberCode memberCode={leader.memberCode} />
       </div>

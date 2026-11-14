@@ -263,6 +263,7 @@ I dati che cambiano nel tempo sono in un database SQLite ospitato gratuitamente 
 | `link` | materiali e link, con categoria e tipo (icona) | `<LinkList />` (pagina `/materiale`) |
 | `year_project` | Progetto del Capo di ogni capo (per codice socio), per anno: le risposte, per area e domanda del modello dell'anno | Tabù |
 | `scout_year` | anni del Progetto del Capo, aggiunti dagli admin: modello (aree × domande), visibile, attivo | Tabù |
+| `pesca`, `pesca_assignment` | pesche tra capi: titolo, data, stato; per ogni partecipante il capo pescato, **cifrato** (illeggibile dal database) | Tabù |
 | `user`, `session`, `account`, `verification` | accessi al Tabù (gestite da Better Auth) | Tabù |
 
 Le letture delle pagine pubbliche sono in `lib/data.ts` e sono in cache: le pagine restano statiche e vengono rigenerate solo quando una modifica dal sito chiama `revalidateTag` (le modifiche fatte fuori dal sito, con gli script o la shell di Turso, compaiono entro un giorno).
@@ -304,6 +305,7 @@ Il Tabù (`/tabu`, nel menu *Strumenti*) è l'area riservata ai capi: ognuno com
 - **Controlli**: `proxy.ts` rimanda al login chi non ha il cookie di sessione, ma il controllo vero è in `lib/dal.ts` (`requireLeader()` / `requireAdmin()`), chiamato da ogni pagina e ogni server action.
 - **Foto**: il browser ritaglia la foto in un quadrato 256×256 (massimo 100 KB); il server la carica su ImageKit (cartella `IMAGEKIT_STAFF_FOLDER`: `/dev/staff/` in locale, `/img/staff/` online) e cancella la precedente solo se era stata caricata dal sito.
 - **Google**: nel client OAuth della Google Cloud console vanno autorizzati i redirect `http://localhost:3000/api/auth/callback/google` e `https://mirandola2.it/api/auth/callback/google`.
+- **Pesca**: in *Admin → Pesca* un admin fa una pesca tra i capi (titolo e partecipanti; chi è senza email non può partecipare): ogni capo ne pesca un altro, mai sé stesso, e lo scopre in *Pesca* premendo *Scopri chi hai pescato*. La voce e la pagina ci sono solo per chi partecipa ad almeno una pesca non archiviata. Chi ha pescato chi non è leggibile né dal database né dagli admin: in `pesca_assignment` il capo pescato è cifrato con AES-256-GCM (`lib/pesca-core.ts`), con una chiave per riga derivata da `PESCA_SECRET`, che esiste solo nelle variabili di Vercel; ogni riga è legata a pesca e capo, quindi spostarla su un altro capo la rende illeggibile. Il server legge solo la riga del capo collegato e solo quando la chiede (`app/tabu/(riservato)/pesca/actions.ts`); l'abbinamento non è nell'HTML delle pagine né nella cache dell'app offline. Resta visibile a chi può leggere `PESCA_SECRET` o pubblicare codice che lo usa, e a chi ha `BETTER_AUTH_SECRET` (può aprire una sessione a nome di un capo). Per rifare una pesca se ne fa una nuova. **Se `PESCA_SECRET` si perde o cambia, le pesche esistenti non si leggono più**: tenerne una copia offline.
 - **In locale senza Google**: `npm run db:dev-login -- <email>` apre una sessione per un capo e stampa il cookie da impostare nel browser (solo con un database `file:`).
 
 ## App installabile e offline 📲
@@ -411,6 +413,7 @@ In *Settings* del progetto:
 | `MEMBER_PSK_SHA256` | sha256 del Token Magico (comando in `.env.example`) |
 | `IMAGEKIT_PRIVATE_KEY` | ImageKit → *Developer options* |
 | `IMAGEKIT_STAFF_FOLDER` | `/img/staff/` |
+| `PESCA_SECRET` | nuovo, generato con `openssl rand -base64 32`, come variabile **Sensitive** (poi non si rilegge dalla dashboard); copia di backup offline, mai nel `.env` locale |
 
 La region delle funzioni (`fra1`) è già in `vercel.json`.
 

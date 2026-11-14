@@ -14,11 +14,16 @@ const sections = [
 
 // Replaces the site navbar under /tabu (HeaderNavbar hides itself there), with the same width
 // (px-2 is the padding of daisyUI's .navbar).
-// Logged out (login page) it only shows the logo and the title.
-export default function TabuNavbar({ leader }: { leader: NavbarLeader | null }) {
+// Logged out (login page) it only shows the logo and the title. `pesca`: the leader takes part in an
+// open pesca (the page doesn't exist otherwise).
+export default function TabuNavbar({ leader, pesca = false }: { leader: NavbarLeader | null; pesca?: boolean }) {
   const pathname = usePathname()
   const current = pathname.endsWith('/') ? pathname : `${pathname}/`
-  const links = leader?.isAdmin ? [...sections, { href: '/tabu/admin/', label: 'Admin' }] : sections
+  const links = [
+    ...sections,
+    ...(pesca ? [{ href: '/tabu/pesca/', label: 'Pesca' }] : []),
+    ...(leader?.isAdmin ? [{ href: '/tabu/admin/', label: 'Admin' }] : []),
+  ]
 
   const nav = (className: string) => (
     <nav className={className} aria-label="Sezioni del Tabù">

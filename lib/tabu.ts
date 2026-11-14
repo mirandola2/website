@@ -10,7 +10,7 @@ import { scoutYearOf } from './scout-year'
 // have checked requireLeader() first.
 
 // Leaders who can log in (coca = 1 with an email, not removed), in the staff main order
-const loginLeaders = and(eq(staffMember.coca, true), isNotNull(staffMember.email), isNull(staffMember.deletedAt))
+export const loginLeaders = and(eq(staffMember.coca, true), isNotNull(staffMember.email), isNull(staffMember.deletedAt))
 
 export const NO_YEAR = 'Nessun anno aperto per i Progetti del Capo: chiedi a un admin.'
 
