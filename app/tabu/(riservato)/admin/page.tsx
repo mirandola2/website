@@ -15,7 +15,7 @@ export default async function AdminPage() {
     { href: '/tabu/admin/totem/', title: 'Totem', text: `${counts.totem} nomi totem` },
     { href: '/tabu/admin/soci/', title: 'Codici socio e compleanni', text: `${counts.members} soci, da un file CSV` },
     { href: '/tabu/admin/progetti/', title: 'Progetti del Capo', text: 'Anni visibili, anni attivi e domanda dell’anno' },
-    { href: '/tabu/admin/pesca/', title: 'Pesca', text: 'Ogni capo pesca un altro capo, e solo lui sa chi' },
+    { href: '/tabu/admin/sorteggio/', title: 'Sorteggio', text: 'A ogni capo tocca in sorte un altro capo, e solo lui sa chi' },
   ]
 
   return (

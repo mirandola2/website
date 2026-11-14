@@ -4,7 +4,7 @@ import { requireLeader } from '@/lib/dal'
 import { canReadProjects } from '@/lib/project'
 import { scoutYearOf } from '@/lib/scout-year'
 import { getDashboardStats, getProject, NO_YEAR, resolveYear } from '@/lib/tabu'
-import { listOpenPescheFor } from '@/lib/pesca'
+import { listOpenDrawsFor } from '@/lib/draw'
 import { filledSentence, firstName, formatDate, greeting, shortNames } from '@/lib/format'
 import StaffAvatar from '@/components/tabu/StaffAvatar'
 import MyMemberCode from '@/components/tabu/MyMemberCode'
@@ -18,7 +18,7 @@ export default async function Dashboard() {
   const stats = year && readable ? await getDashboardStats(year.id) : null
   const yearLabel = year?.id.replace('-', '/20')
   const latestNames = shortNames(stats?.latest.map(p => p.nome) ?? [])
-  const pesche = await listOpenPescheFor(leader.memberCode)
+  const draws = await listOpenDrawsFor(leader.memberCode)
 
   return (
     <div className="space-y-6">
@@ -84,20 +84,20 @@ export default async function Dashboard() {
           </div>
         </section>
 
-        {pesche.length > 0 && (
+        {draws.length > 0 && (
           <section className="card bg-base-200">
             <div className="card-body">
               <h2 className="card-title">
                 <ShuffleIcon size={24} weight="duotone" aria-hidden />
-                Pesca
+                Sorteggio
               </h2>
               <p>
-                {pesche.length === 1
-                  ? `${pesche[0].title} (${formatDate(pesche[0].createdAt)}): scopri chi hai pescato.`
-                  : `Sei in ${pesche.length} pesche: scopri chi hai pescato.`}
+                {draws.length === 1
+                  ? `${draws[0].title} (${formatDate(draws[0].createdAt)}): scopri chi ti è toccato.`
+                  : `Sei in ${draws.length} sorteggi: scopri chi ti è toccato.`}
               </p>
               <div className="card-actions justify-end">
-                <Link href="/tabu/pesca/" className="btn btn-primary btn-sm">
+                <Link href="/tabu/sorteggio/" className="btn btn-primary btn-sm">
                   Apri
                   <ArrowRightIcon size={16} weight="bold" aria-hidden />
                 </Link>

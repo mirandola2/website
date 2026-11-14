@@ -6,8 +6,8 @@
 export const ICONS_VERSION = 3
 
 // Pages kept for offline use. The first group is public, the second is the Tabù (it is stored only
-// for a logged-in leader, see PwaRegister). Never /tabu/pesca/: what a leader drew must not stay on
-// the device (it is not in that page's HTML anyway, see PescaReveal).
+// for a logged-in leader, see PwaRegister). Never /tabu/sorteggio/: what a leader drew must not stay on
+// the device (it is not in that page's HTML anyway, see DrawReveal).
 export const OFFLINE_PUBLIC = ['/', '/morse/', '/totem/', '/codice-socio/']
 export const OFFLINE_PRIVATE = ['/tabu/', '/tabu/progetti/']
 export const isOfflinePath = (pathname: string) => OFFLINE_PUBLIC.includes(pathname) || OFFLINE_PRIVATE.includes(pathname)

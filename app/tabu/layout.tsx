@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { getLeader, getNavbarLeader } from '@/lib/dal'
-import { hasOpenPesca } from '@/lib/pesca'
+import { hasOpenDraw } from '@/lib/draw'
 import TabuNavbar from '@/components/tabu/TabuNavbar'
 
 // The Tabù is the leaders' reserved area: never indexed (also excluded in robots.ts and sitemap.ts)
@@ -13,13 +13,13 @@ export const metadata: Metadata = {
 // page and server action (requireLeader / requireAdmin), not here.
 export default async function TabuLayout({ children }: { children: React.ReactNode }) {
   const leader = await getNavbarLeader()
-  // The Pesca link only for whoever takes part in an open one (admin actions revalidate this layout)
+  // The Sorteggio link only for whoever takes part in an open one (admin actions revalidate this layout)
   const me = leader && (await getLeader())
-  const pesca = !!me && (await hasOpenPesca(me.memberCode))
+  const draw = !!me && (await hasOpenDraw(me.memberCode))
 
   return (
     <>
-      <TabuNavbar leader={leader} pesca={pesca} />
+      <TabuNavbar leader={leader} draw={draw} />
       <div className="container px-4 py-8 max-w-5xl">{children}</div>
     </>
   )

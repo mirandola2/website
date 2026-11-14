@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { randomBytes } from 'crypto'
-import { decryptReceiver, derange, encryptReceiver, parseSecret } from './pesca-core'
+import { decryptReceiver, derange, encryptReceiver, parseSecret } from './draw-core'
 
 const isDerangement = (items: string[], map: Map<string, string>) => {
   assert.equal(map.size, items.length)
@@ -45,7 +45,7 @@ test('encryptReceiver: round trip, fixed length, different every time', () => {
   assert.notEqual(a, encryptReceiver(secret, 'p1', 'mario', 'anna'))
 })
 
-test('decryptReceiver: fails on another row, pesca or key', () => {
+test('decryptReceiver: fails on another row, draw or key', () => {
   const payload = encryptReceiver(secret, 'p1', 'mario', 'anna')
   assert.throws(() => decryptReceiver(secret, 'p1', 'luca', payload))
   assert.throws(() => decryptReceiver(secret, 'p2', 'mario', payload))

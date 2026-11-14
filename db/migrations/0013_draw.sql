@@ -1,4 +1,4 @@
-CREATE TABLE `pesca` (
+CREATE TABLE `draw` (
 	`id` text PRIMARY KEY NOT NULL,
 	`title` text NOT NULL,
 	`created_at` integer NOT NULL,
@@ -8,13 +8,13 @@ CREATE TABLE `pesca` (
 	`scheme` text NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE `pesca_assignment` (
-	`pesca_id` text NOT NULL,
+CREATE TABLE `draw_assignment` (
+	`draw_id` text NOT NULL,
 	`giver` text NOT NULL,
 	`payload` text NOT NULL,
-	FOREIGN KEY (`pesca_id`) REFERENCES `pesca`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`draw_id`) REFERENCES `draw`(`id`) ON UPDATE no action ON DELETE cascade,
 	FOREIGN KEY (`giver`) REFERENCES `staff_member`(`member_code`) ON UPDATE cascade ON DELETE restrict
 );
 --> statement-breakpoint
-CREATE INDEX `pesca_assignment_giver_idx` ON `pesca_assignment` (`giver`);--> statement-breakpoint
-CREATE UNIQUE INDEX `pesca_assignment_pescaId_giver_unique` ON `pesca_assignment` (`pesca_id`,`giver`);
+CREATE INDEX `draw_assignment_giver_idx` ON `draw_assignment` (`giver`);--> statement-breakpoint
+CREATE UNIQUE INDEX `draw_assignment_drawId_giver_unique` ON `draw_assignment` (`draw_id`,`giver`);

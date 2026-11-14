@@ -23,7 +23,7 @@ const ALL_CACHES = [STATIC, PAGES, PRIVATE, IMAGES]
 const OFFLINE_URL = '/offline/'
 // Pages that are kept for offline use. The site has trailingSlash: true.
 const PUBLIC_PATHS = ['/', '/morse/', '/totem/', '/codice-socio/']
-// Never /tabu/pesca/ (lib/pwa.ts)
+// Never /tabu/sorteggio/ (lib/pwa.ts)
 const PRIVATE_PATHS = ['/tabu/', '/tabu/progetti/']
 
 const NETWORK_TIMEOUT_MS = 5000

@@ -5,7 +5,7 @@ import { PlusIcon, XIcon } from '@phosphor-icons/react'
 import StaffAvatar from './StaffAvatar'
 import type { ActionResult } from './types'
 
-export interface PescaCandidate {
+export interface DrawCandidate {
   memberCode: string
   nome: string
   img: string | null
@@ -13,14 +13,14 @@ export interface PescaCandidate {
   canLogin: boolean
 }
 
-interface PescaDialogProps {
-  candidates: PescaCandidate[]
+interface DrawDialogProps {
+  candidates: DrawCandidate[]
   action: (prev: ActionResult, formData: FormData) => Promise<ActionResult>
 }
 
-// "Nuova pesca": the title and the participants, all the leaders who can log in ticked at first.
+// "Nuovo sorteggio": the title and the participants, all the leaders who can log in ticked at first.
 // The admin only ever sees how many take part, never the result.
-export default function PescaDialog({ candidates, action }: PescaDialogProps) {
+export default function DrawDialog({ candidates, action }: DrawDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const selectable = candidates.filter(c => c.canLogin).map(c => c.memberCode)
   const [checked, setChecked] = useState(() => new Set(selectable))
@@ -52,7 +52,7 @@ export default function PescaDialog({ candidates, action }: PescaDialogProps) {
       <div className="flex flex-wrap items-center gap-3">
         <button type="button" className="btn btn-primary" onClick={open} aria-haspopup="dialog">
           <PlusIcon size={18} weight="bold" aria-hidden />
-          Nuova pesca
+          Nuovo sorteggio
         </button>
         {result && !pending && (
           <span role="status" className={`text-sm ${result.ok ? 'text-success' : 'text-error'}`}>
@@ -62,20 +62,20 @@ export default function PescaDialog({ candidates, action }: PescaDialogProps) {
       </div>
 
       {/* pt-26: the box is centred below the sticky navbar (two rows on small screens), never under it */}
-      <dialog ref={dialogRef} className="modal pt-26" aria-label="Nuova pesca">
+      <dialog ref={dialogRef} className="modal pt-26" aria-label="Nuovo sorteggio">
         <div className="modal-box w-11/12 max-w-2xl max-h-[calc(100dvh-8rem)]">
           <form method="dialog">
             <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" aria-label="Chiudi">
               <XIcon size={18} weight="bold" aria-hidden />
             </button>
           </form>
-          <h2 className="font-bold text-xl mb-2">Nuova pesca</h2>
+          <h2 className="font-bold text-xl mb-2">Nuovo sorteggio</h2>
           <form
             key={formKey}
             onSubmit={e => {
               e.preventDefault()
               if (checked.size < 2) return
-              if (!window.confirm(`Fare la pesca tra ${checked.size} capi? Il risultato non si potrà vedere né cambiare: per rifarla serve una pesca nuova.`)) return
+              if (!window.confirm(`Fare il sorteggio tra ${checked.size} capi? Il risultato non si potrà vedere né cambiare: per rifarlo serve un sorteggio nuovo.`)) return
               const data = new FormData(e.currentTarget)
               startTransition(() => formAction(data))
             }}
@@ -118,7 +118,7 @@ export default function PescaDialog({ candidates, action }: PescaDialogProps) {
             <div className="flex flex-wrap items-center gap-3 mt-4">
               <button type="submit" className="btn btn-primary" disabled={pending || checked.size < 2}>
                 {pending && <span className="loading loading-spinner loading-xs" />}
-                Fai la pesca
+                Fai il sorteggio
               </button>
               {checked.size < 2 && <span className="text-sm opacity-70">Servono almeno 2 partecipanti.</span>}
               {result && !result.ok && !pending && (
