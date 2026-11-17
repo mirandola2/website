@@ -206,3 +206,38 @@ export const rateLimit = sqliteTable(
   // Expired windows are deleted on every hit
   t => [index('rate_limit_reset_at_idx').on(t.resetAt)],
 )
+
+// A draw ("Sorteggio") among leaders: each participant gets another one (never themselves). Who drew whom
+// is never stored in clear: every row holds the receiver encrypted with DRAW_SECRET, which lives
+// only in the Vercel env (lib/draw-core.ts). Not even the admins can read it from here.
+export const draw = sqliteTable('draw', {
+  // Random uuid
+  id: text().primaryKey(),
+  title: text().notNull(),
+  createdAt: integer({ mode: 'timestamp_ms' }).notNull(),
+  // The admin who started it (no FK: staff rows are never deleted, and this is just a note)
+  createdBy: text().notNull(),
+  // Archived: the leaders don't see it any more
+  status: text({ enum: ['open', 'archived'] }).notNull().default('open'),
+  participantCount: integer().notNull(),
+  // How the rows are encrypted ('aes-gcm-v1'), so the scheme can change without a rewrite
+  scheme: text().notNull(),
+})
+
+// One row per participant. No receiver column in clear and no per-row timestamp: the payload is
+// AES-256-GCM of the receiver's slug, bound to (draw, giver's slug), so rows can't be swapped.
+export const drawAssignment = sqliteTable(
+  'draw_assignment',
+  {
+    drawId: text()
+      .notNull()
+      .references(() => draw.id, { onDelete: 'cascade' }),
+    giver: text()
+      .notNull()
+      .references(() => staffMember.memberCode, { onUpdate: 'cascade', onDelete: 'restrict' }),
+    // base64 of iv | ciphertext | tag
+    payload: text().notNull(),
+  },
+  // The giver index: a leader's own draws (Tabù navbar, /tabu/sorteggio)
+  t =>[unique().on(t.drawId, t.giver), index('draw_assignment_giver_idx').on(t.giver)],
+)
