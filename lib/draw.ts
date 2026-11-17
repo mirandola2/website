@@ -3,7 +3,7 @@ import { randomUUID } from 'crypto'
 import { and, asc, count, desc, eq, exists, isNull } from 'drizzle-orm'
 import { db } from './db'
 import { draw, drawAssignment, staffMember } from '@/db/schema'
-import { decryptReceiver, derange, encryptReceiver, parseSecret, DRAW_SCHEME } from './draw-core'
+import { decryptReceiver, drawAssignments, encryptReceiver, parseSecret, DRAW_SCHEME } from './draw-core'
 import { loginLeaders } from './tabu'
 
 // The draw among leaders (README → Sorteggio). Who drew whom exists in clear only in memory: while
@@ -38,12 +38,10 @@ export async function createDraw(createdBy: string, title: string, included: str
   if (participants.length < 2) throw new DrawError('Servono almeno 2 partecipanti.')
 
   const id = randomUUID()
-  const slugs = participants.map(code => slugOf.get(code)!)
-  const pairs = derange(slugs)
-  const rows = participants.map((code, i) => ({
+  const rows = drawAssignments(participants.map(code => ({ code, slug: slugOf.get(code)! }))).map(r => ({
     drawId: id,
-    giver: code,
-    payload: encryptReceiver(key, id, slugs[i], pairs.get(slugs[i])!),
+    giver: r.giver,
+    payload: encryptReceiver(key, id, r.giverSlug, r.receiverSlug),
   }))
   await db.batch([
     db.insert(draw).values({ id, title, createdAt: new Date(), createdBy, participantCount: rows.length, scheme: DRAW_SCHEME }),
@@ -78,6 +76,12 @@ export async function listOpenDrawsFor(memberCode: string) {
     .innerJoin(draw, eq(draw.id, drawAssignment.drawId))
     .where(mineOpen(memberCode))
     .orderBy(desc(draw.createdAt))
+}
+
+// Titles of the open draws this person gives in (admin notice when they lose their access)
+export async function openDrawTitlesFor(memberCode: string) {
+  const rows = await listOpenDrawsFor(memberCode)
+  return rows.map(r => r.title)
 }
 
 // Whether the Tabù shows the Sorteggio page to this leader at all

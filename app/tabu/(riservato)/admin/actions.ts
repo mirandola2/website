@@ -8,6 +8,7 @@ import { requireAdmin } from '@/lib/dal'
 import { formatBirthday, normalizeName, slugify } from '@/lib/format'
 import { isPlaceholderCode, placeholderCode } from '@/lib/member-code'
 import { replaceStaffPhoto } from '@/lib/staff-photo'
+import { openDrawTitlesFor } from '@/lib/draw'
 import { optionalText } from '@/lib/validation'
 import { parseMembersCsv } from '@/lib/members-csv'
 import { link, media, member, scoutYear, staffMember, totem, yearProject } from '@/db/schema'
@@ -25,6 +26,16 @@ function done(tag: 'staff' | 'media' | 'links' | 'totem', message: string): Acti
 
 const fail = (error: z.ZodError): ActionResult => ({ ok: false, message: error.issues[0].message })
 const notFound: ActionResult = { ok: false, message: 'Riga non trovata.' }
+
+// Someone who can't log in any more still has a row in the open draws they took part in: they
+// can't see who they drew, and whoever drew them stays without a giver. Only a notice: the
+// admin decides whether to draw again.
+async function drawNotice(code: string) {
+  const titles = await openDrawTitlesFor(code)
+  if (!titles.length) return ''
+  const list = titles.map(t => `«${t}»`).join(', ')
+  return ` Attenzione: partecipa a ${titles.length === 1 ? 'un sorteggio aperto' : 'sorteggi aperti'} (${list}) e non potrà più vedere chi ha pescato, quindi la persona pescata resta senza regalo. Valuta di rifare il sorteggio.`
+}
 
 const requiredText = (max: number, label: string) => z.string().trim().min(1, `${label} obbligatorio.`).max(max)
 const id = z.coerce.number().int().positive()
@@ -141,10 +152,14 @@ export async function saveStaffMember(_prev: ActionResult, formData: FormData): 
       }
       return rows.length
     })
-    return updated ? done('staff', 'Salvato.') : notFound
+    if (!updated) return notFound
+    // No longer a leader who can log in: they can't see their own draw any more
+    const notice = values.coca && values.email ? '' : await drawNotice(code)
+    return done('staff', `Salvato.${notice}`)
   }
 
-  let slug = slugify(values.nome)
+  // Never empty (a name with no a-z/0-9 letters): the draw stores leaders by slug
+  let slug = slugify(values.nome) || 'staff'
   const base = slug
   for (let i = 2; (await db.select({ slug: staffMember.slug }).from(staffMember).where(eq(staffMember.slug, slug))).length; i++) {
     slug = `${base}-${i}`
@@ -215,7 +230,8 @@ export async function deleteStaffMember(_prev: ActionResult, formData: FormData)
         .where(and(eq(staffMember.memberCode, code), isNull(staffMember.deletedAt)))
         .returning({ nome: staffMember.nome })
     : []
-  return row ? done('staff', `Eliminato ${row.nome}. I suoi progetti restano.`) : notFound
+  if (!row || !code) return notFound
+  return done('staff', `Eliminato ${row.nome}. I suoi progetti restano.${await drawNotice(code)}`)
 }
 
 // Any row's photo, RS included

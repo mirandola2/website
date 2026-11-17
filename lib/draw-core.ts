@@ -22,6 +22,28 @@ export function derange<T>(items: readonly T[], rand: (max: number) => number = 
   throw new Error('Could not draw a derangement')
 }
 
+// Who gives to whom among `participants` (member code + slug), as rows ready to encrypt. Checked
+// before returning, since once encrypted nobody can audit it: one row per participant, each one
+// drawn exactly once, nobody by themselves, every row's slug the giver's own.
+export function drawAssignments(
+  participants: readonly { code: string; slug: string }[],
+  rand?: (max: number) => number,
+) {
+  const slugs = participants.map(p => p.slug)
+  if (slugs.some(slug => !slug)) throw new Error('A participant has no slug')
+  const pairs = derange(slugs, rand)
+  const rows = participants.map(p => ({ giver: p.code, giverSlug: p.slug, receiverSlug: pairs.get(p.slug)! }))
+
+  const receivers = new Set(rows.map(r => r.receiverSlug))
+  const ok =
+    new Set(rows.map(r => r.giver)).size === participants.length &&
+    receivers.size === participants.length &&
+    slugs.every(slug => receivers.has(slug)) &&
+    rows.every((r, i) => r.giverSlug === slugs[i] && r.receiverSlug !== r.giverSlug)
+  if (!ok) throw new Error('Draw check failed')
+  return rows
+}
+
 // The receiver is padded to a fixed length, so the ciphertext doesn't tell short slugs from long ones
 const PLAINTEXT_BYTES = 128
 const IV_BYTES = 12
